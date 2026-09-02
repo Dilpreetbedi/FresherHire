@@ -18,10 +18,9 @@ export default function CompanySignup() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
 
     setFormData((previous) => ({
@@ -29,167 +28,105 @@ export default function CompanySignup() {
       [name]: value,
     }));
 
-    if (error) {
-      setError("");
-    }
+    if (error) setError("");
+    if (successMessage) setSuccessMessage("");
   }
 
-  function normalizeWebsite(
-    website: string
-  ) {
-    const value =
-      website.trim();
+  function normalizeWebsite(website: string) {
+    const value = website.trim();
 
     if (!value) {
       return null;
     }
 
-    if (
-      value.startsWith("http://") ||
-      value.startsWith("https://")
-    ) {
+    if (value.startsWith("http://") || value.startsWith("https://")) {
       return value;
     }
 
     return `https://${value}`;
   }
 
-  async function handleSubmit(
-    e: React.FormEvent
-  ) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     setError("");
+    setSuccessMessage("");
     setLoading(true);
 
     try {
-      const cleanCompanyName =
-        formData.companyName.trim();
-
-      const cleanEmail =
-        formData.email.trim();
-
-      const cleanLocation =
-        formData.location.trim();
-
-      const website =
-        normalizeWebsite(
-          formData.website
-        );
+      const cleanCompanyName = formData.companyName.trim();
+      const cleanEmail = formData.email.trim().toLowerCase();
+      const cleanLocation = formData.location.trim();
+      const website = normalizeWebsite(formData.website);
 
       if (!cleanCompanyName) {
-        throw new Error(
-          "Company name is required."
-        );
+        throw new Error("Company name is required.");
       }
 
       if (!cleanEmail) {
-        throw new Error(
-          "Work email is required."
-        );
+        throw new Error("Work email is required.");
       }
 
-      if (
-        formData.password.length < 8
-      ) {
-        throw new Error(
-          "Password must be at least 8 characters."
-        );
+      if (formData.password.length < 8) {
+        throw new Error("Password must be at least 8 characters.");
       }
 
-      const {
-        data: authData,
-        error: authError,
-      } =
+      const { data: authData, error: authError } =
         await supabase.auth.signUp({
           email: cleanEmail,
           password: formData.password,
           options: {
             data: {
               user_type: "company",
-              company_name:
-                cleanCompanyName,
-              full_name:
-                cleanCompanyName,
+              company_name: cleanCompanyName,
+              full_name: cleanCompanyName,
+              website,
+              location: cleanLocation || null,
             },
           },
         });
 
       if (authError) {
+        const message = authError.message.toLowerCase();
+
+        if (
+          message.includes("already registered") ||
+          message.includes("already exists")
+        ) {
+          throw new Error(
+            "An account with this email already exists. Please sign in instead."
+          );
+        }
+
         throw authError;
       }
 
       if (!authData.user) {
-        throw new Error(
-          "Could not create account."
-        );
+        throw new Error("Could not create account.");
       }
 
       /*
-        Important:
-        FresherHire may create a profiles row automatically
-        when an auth user is created. Ensure a company account
-        is never left with the default "fresher" role.
+        The database trigger now creates:
+        - public.profiles
+        - public.companies
+
+        Do NOT insert/upsert those tables here from the browser.
+        This avoids RLS failures when email confirmation is enabled.
       */
-      const {
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .upsert(
-          {
-            id: authData.user.id,
-            full_name:
-              cleanCompanyName,
-            email:
-              cleanEmail,
-            user_type:
-              "company",
-          },
-          {
-            onConflict: "id",
-          }
-        );
 
-      if (profileError) {
-        console.error(
-          "Company profile role error:",
-          profileError
+      if (!authData.session) {
+        setSuccessMessage(
+          "Company account created. Please check your email to confirm your account, then sign in."
         );
-
-        throw new Error(
-          profileError.message ||
-            "Could not create the company account profile."
-        );
+        return;
       }
 
-      const {
-        error: companyError,
-      } = await supabase
-        .from("companies")
-        .insert({
-          id: authData.user.id,
-          company_name:
-            cleanCompanyName,
-          email:
-            cleanEmail,
-          website,
-          location:
-            cleanLocation || null,
-        });
-
-      if (companyError) {
-        throw companyError;
-      }
-
-      router.replace(
-        "/company/dashboard"
-      );
+      router.replace("/company/dashboard");
+      router.refresh();
     } catch (err) {
-      console.error(err);
+      console.error("Company signup error:", err);
 
       setError(
         err instanceof Error
@@ -203,7 +140,6 @@ export default function CompanySignup() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900">
-
       <div className="absolute inset-0 -z-10">
         <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-blue-100 blur-3xl" />
         <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-cyan-100 blur-3xl" />
@@ -211,15 +147,11 @@ export default function CompanySignup() {
 
       <nav className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-
           <Link
             href="/"
             className="text-2xl font-bold tracking-tight text-slate-950"
           >
-            Fresher
-            <span className="text-blue-600">
-              Hire
-            </span>
+            Fresher<span className="text-blue-600">Hire</span>
           </Link>
 
           <Link
@@ -228,14 +160,11 @@ export default function CompanySignup() {
           >
             ← Back
           </Link>
-
         </div>
       </nav>
 
       <section className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-
         <div className="text-center">
-
           <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
             Employer Signup
           </p>
@@ -245,20 +174,17 @@ export default function CompanySignup() {
           </h1>
 
           <p className="mx-auto mt-4 max-w-xl leading-7 text-slate-600">
-            Create a company account to post jobs and discover entry-level talent using skills, assessments and project evidence.
+            Create a company account to post jobs and discover entry-level talent
+            using skills, assessments and project evidence.
           </p>
-
         </div>
 
         <form
           onSubmit={handleSubmit}
           className="mt-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8"
         >
-
           <div className="space-y-6">
-
             <div>
-
               <label
                 htmlFor="companyName"
                 className="text-sm font-medium text-slate-700"
@@ -276,11 +202,9 @@ export default function CompanySignup() {
                 placeholder="e.g. Acme Technologies"
                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
-
             </div>
 
             <div>
-
               <label
                 htmlFor="email"
                 className="text-sm font-medium text-slate-700"
@@ -299,11 +223,9 @@ export default function CompanySignup() {
                 placeholder="hr@company.com"
                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
-
             </div>
 
             <div>
-
               <label
                 htmlFor="password"
                 className="text-sm font-medium text-slate-700"
@@ -327,11 +249,9 @@ export default function CompanySignup() {
               <p className="mt-2 text-xs text-slate-500">
                 Use at least 8 characters.
               </p>
-
             </div>
 
             <div>
-
               <label
                 htmlFor="website"
                 className="text-sm font-medium text-slate-700"
@@ -354,11 +274,9 @@ export default function CompanySignup() {
               <p className="mt-2 text-xs text-slate-500">
                 You can enter company.com or a full https:// URL.
               </p>
-
             </div>
 
             <div>
-
               <label
                 htmlFor="location"
                 className="text-sm font-medium text-slate-700"
@@ -375,9 +293,7 @@ export default function CompanySignup() {
                 placeholder="e.g. Bangalore, India"
                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
-
             </div>
-
           </div>
 
           {error && (
@@ -386,20 +302,36 @@ export default function CompanySignup() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-8 w-full rounded-xl bg-blue-600 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading
-              ? "Creating Account..."
-              : "Create Company Account →"}
-          </button>
+          {successMessage && (
+            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-700">
+              <p className="font-semibold">Account created</p>
+              <p className="mt-1">{successMessage}</p>
+
+              <Link
+                href="/login"
+                className="mt-3 inline-block font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Go to Sign In →
+              </Link>
+            </div>
+          )}
+
+          {!successMessage && (
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-8 w-full rounded-xl bg-blue-600 px-5 py-4 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading
+                ? "Creating Account..."
+                : "Create Company Account →"}
+            </button>
+          )}
 
           <p className="mt-5 text-center text-xs leading-5 text-slate-500">
-            By creating an account, you agree to FresherHire&apos;s Terms of Service and Privacy Policy.
+            By creating an account, you agree to FresherHire&apos;s Terms of
+            Service and Privacy Policy.
           </p>
-
         </form>
 
         <p className="mt-6 text-center text-sm text-slate-500">
@@ -411,9 +343,7 @@ export default function CompanySignup() {
             Sign in
           </Link>
         </p>
-
       </section>
-
     </main>
   );
 }
