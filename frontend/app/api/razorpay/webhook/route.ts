@@ -15,11 +15,11 @@ const PLANS: Record<
   }
 > = {
   starter: {
-    amount: 99900,
+    amount: 100,
     name: "Starter",
   },
   pro: {
-    amount: 199900,
+    amount: 100,
     name: "Pro",
   },
 };

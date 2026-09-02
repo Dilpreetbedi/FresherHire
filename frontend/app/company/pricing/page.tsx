@@ -143,7 +143,7 @@ const pricingPlans: PricingPlan[] = [
   {
     key: "starter",
     name: "Starter",
-    price: "₹999",
+    price: "₹1",
     period: "30 days",
     description:
       "For startups and hiring teams actively recruiting entry-level talent.",
@@ -161,7 +161,7 @@ const pricingPlans: PricingPlan[] = [
   {
     key: "pro",
     name: "Pro",
-    price: "₹1,999",
+    price: "₹1",
     period: "30 days",
     description:
       "For growing teams that need more hiring capacity and deeper insights.",

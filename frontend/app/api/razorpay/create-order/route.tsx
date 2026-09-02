@@ -16,13 +16,13 @@ const PLANS: Record<
   starter: {
     // Razorpay amount is in paise.
     // ₹999 = 99,900 paise
-    amount: 99900,
+    amount: 100,
     name: "Starter",
   },
 
   pro: {
     // ₹1,999 = 199,900 paise
-    amount: 199900,
+    amount: 100,
     name: "Pro",
   },
 };
