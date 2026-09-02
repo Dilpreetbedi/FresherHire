@@ -50,13 +50,19 @@ export default function FresherSignup() {
 
     try {
       const cleanEmail =
-        formData.email.trim();
+        formData.email.trim().toLowerCase();
 
       const cleanName =
         formData.fullName.trim();
 
       const cleanLocation =
         formData.location.trim();
+
+      const cleanDegree =
+        formData.degree.trim();
+
+      const cleanRole =
+        formData.role.trim();
 
       if (!cleanName) {
         throw new Error(
@@ -93,6 +99,18 @@ export default function FresherSignup() {
         );
       }
 
+      if (!cleanDegree) {
+        throw new Error(
+          "Please enter your degree or qualification."
+        );
+      }
+
+      if (!cleanRole) {
+        throw new Error(
+          "Please enter your preferred role."
+        );
+      }
+
       const {
         data: authData,
         error: authError,
@@ -100,9 +118,31 @@ export default function FresherSignup() {
         await supabase.auth.signUp({
           email: cleanEmail,
           password: formData.password,
+          options: {
+            data: {
+              user_type: "fresher",
+              full_name: cleanName,
+              graduation_year: graduationYear,
+              degree: cleanDegree,
+              location: cleanLocation || null,
+              preferred_role: cleanRole,
+            },
+          },
         });
 
       if (authError) {
+        const message =
+          authError.message.toLowerCase();
+
+        if (
+          message.includes("already registered") ||
+          message.includes("already exists")
+        ) {
+          throw new Error(
+            "An account with this email already exists. Please sign in instead."
+          );
+        }
+
         throw authError;
       }
 
@@ -112,32 +152,18 @@ export default function FresherSignup() {
         );
       }
 
-      const {
-        error: profileError,
-      } = await supabase
-        .from("profiles")
-        .insert({
-          id: authData.user.id,
-          full_name: cleanName,
-          email: cleanEmail,
-          user_type: "fresher",
-          graduation_year:
-            graduationYear,
-          degree:
-            formData.degree,
-          location:
-            cleanLocation,
-          preferred_role:
-            formData.role,
-        });
-
-      if (profileError) {
-        throw profileError;
+      if (!authData.session) {
+        router.replace(
+          "/login"
+        );
+        return;
       }
 
-      router.push(
+      router.replace(
         "/dashboard"
       );
+
+      router.refresh();
     } catch (err) {
       console.error(err);
 
@@ -323,32 +349,23 @@ export default function FresherSignup() {
                 htmlFor="degree"
                 className="mb-2 block text-sm font-medium text-slate-700"
               >
-                Degree
+                Degree / Qualification
               </label>
 
-              <select
+              <input
                 id="degree"
+                type="text"
                 name="degree"
                 value={formData.degree}
                 onChange={handleChange}
+                placeholder="e.g. B.Tech, B.Com, BA, MBA, Diploma"
                 required
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              >
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
 
-                <option value="">
-                  Select your degree
-                </option>
-
-                <option value="B.Tech">B.Tech</option>
-                <option value="B.E">B.E</option>
-                <option value="BCA">BCA</option>
-                <option value="MCA">MCA</option>
-                <option value="M.Tech">M.Tech</option>
-                <option value="B.Sc">B.Sc</option>
-                <option value="M.Sc">M.Sc</option>
-                <option value="Other">Other</option>
-
-              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Any technical or non-technical qualification.
+              </p>
 
             </div>
 
@@ -384,52 +401,20 @@ export default function FresherSignup() {
                 Preferred Role
               </label>
 
-              <select
+              <input
                 id="role"
+                type="text"
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
+                placeholder="e.g. HR, Sales, Marketing, Finance, Developer"
                 required
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              >
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
 
-                <option value="">
-                  Select preferred role
-                </option>
-
-                <option value="AI/ML Engineer">
-                  AI/ML Engineer
-                </option>
-
-                <option value="Software Engineer">
-                  Software Engineer
-                </option>
-
-                <option value="Data Analyst">
-                  Data Analyst
-                </option>
-
-                <option value="Data Scientist">
-                  Data Scientist
-                </option>
-
-                <option value="Frontend Developer">
-                  Frontend Developer
-                </option>
-
-                <option value="Backend Developer">
-                  Backend Developer
-                </option>
-
-                <option value="Full Stack Developer">
-                  Full Stack Developer
-                </option>
-
-                <option value="Other">
-                  Other
-                </option>
-
-              </select>
+              <p className="mt-2 text-xs text-slate-500">
+                Enter any technical or non-technical role you are interested in.
+              </p>
 
             </div>
 
