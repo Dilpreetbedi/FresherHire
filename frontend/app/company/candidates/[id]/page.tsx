@@ -520,21 +520,15 @@ export default function CandidateProfilePage() {
       );
     }, [assessments]);
 
-  const verifiedSkillNames =
-    useMemo(() => {
-      return bestAssessments
-        .filter(
+  const verifiedAssessmentCount =
+    useMemo(
+      () =>
+        bestAssessments.filter(
           (assessment) =>
-            assessment.percentage >=
-            75
-        )
-        .map(
-          (assessment) =>
-            assessment.skill_name
-              .trim()
-              .toLowerCase()
-        );
-    }, [bestAssessments]);
+            assessment.percentage >= 75
+        ).length,
+      [bestAssessments]
+    );
 
   async function shortlistCandidate() {
     if (
@@ -784,7 +778,7 @@ export default function CandidateProfilePage() {
           </p>
 
           <p className="mt-2 text-sm text-slate-500">
-            Preparing profile evidence
+            Preparing candidate evidence
           </p>
         </div>
       </main>
@@ -1027,14 +1021,14 @@ export default function CandidateProfilePage() {
           />
 
           <StatCard
-            label="Verified Skills"
+            label="Verified Assessments"
             value={
-              verifiedSkillNames.length
+              verifiedAssessmentCount
             }
           />
 
           <StatCard
-            label="Projects"
+            label="Work Samples"
             value={
               projects.length
             }
@@ -1209,6 +1203,10 @@ export default function CandidateProfilePage() {
             Skills
           </h2>
 
+          <p className="mt-2 text-sm text-slate-500">
+            Technical, business and role-specific skills added by the candidate.
+          </p>
+
           {skills.length === 0 ? (
 
             <p className="mt-6 text-sm text-slate-500">
@@ -1220,55 +1218,24 @@ export default function CandidateProfilePage() {
             <div className="mt-6 flex flex-wrap gap-3">
 
               {skills.map(
-                (skill) => {
-                  const verified =
-                    verifiedSkillNames.includes(
-                      skill.skill_name
-                        .trim()
-                        .toLowerCase()
-                    );
+                (skill) => (
+                  <div
+                    key={
+                      skill.id
+                    }
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  >
 
-                  return (
-                    <div
-                      key={
-                        skill.id
-                      }
-                      className={`rounded-xl border px-4 py-3 ${
-                        verified
-                          ? "border-green-200 bg-green-50"
-                          : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
+                    <span className="font-semibold text-slate-900">
+                      {skill.skill_name}
+                    </span>
 
-                      <div className="flex items-center gap-2">
+                    <p className="mt-1 text-xs text-slate-500">
+                      {skill.skill_level}
+                    </p>
 
-                        {verified && (
-                          <span className="text-green-700">
-                            ✓
-                          </span>
-                        )}
-
-                        <span
-                          className={
-                            verified
-                              ? "font-semibold text-green-700"
-                              : "font-semibold text-slate-900"
-                          }
-                        >
-                          {skill.skill_name}
-                        </span>
-
-                      </div>
-
-                      <p className="mt-1 text-xs text-slate-500">
-                        {skill.skill_level}
-                        {verified &&
-                          " • Verified"}
-                      </p>
-
-                    </div>
-                  );
-                }
+                  </div>
+                )
               )}
 
             </div>
@@ -1279,22 +1246,38 @@ export default function CandidateProfilePage() {
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
 
           <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">
-            Skill Evidence
+            Verified Evidence
           </p>
 
-          <h2 className="mt-2 text-2xl font-bold text-slate-950">
-            Assessment Results
-          </h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 
-          <p className="mt-2 text-sm text-slate-500">
-            Best assessment attempt for each skill is shown.
-          </p>
+            <div>
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">
+                Verified Skills & Assessments
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Best recorded result for each role-relevant assessment is shown.
+              </p>
+            </div>
+
+            {bestAssessments.length > 0 && (
+              <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                {verifiedAssessmentCount} verified / {bestAssessments.length} attempted
+              </span>
+            )}
+
+          </div>
 
           {bestAssessments.length === 0 ? (
 
             <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-              <p className="text-sm text-slate-500">
+              <p className="text-sm font-medium text-slate-700">
                 No assessment results yet.
+              </p>
+
+              <p className="mt-2 text-xs text-slate-500">
+                This candidate has not completed a FresherHire assessment yet.
               </p>
             </div>
 
@@ -1307,12 +1290,16 @@ export default function CandidateProfilePage() {
 
                   <div
                     key={
-                      assessment.id
+                      assessment.skill_name
                     }
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-5"
+                    className={`rounded-xl border p-5 ${
+                      assessment.percentage >= 75
+                        ? "border-green-200 bg-green-50"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
                   >
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
 
                       <div>
 
@@ -1321,15 +1308,14 @@ export default function CandidateProfilePage() {
                         </h3>
 
                         <p className="mt-1 text-xs text-slate-500">
-                          {assessment.score}/
-                          {assessment.total_questions}{" "}
-                          correct
+                          Best recorded result • {assessment.score}/
+                          {assessment.total_questions} correct
                         </p>
 
                       </div>
 
                       <span
-                        className={`rounded-full border px-3 py-1.5 text-xs font-bold ${getScoreStyle(
+                        className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold ${getScoreStyle(
                           assessment.percentage
                         )}`}
                       >
@@ -1359,11 +1345,29 @@ export default function CandidateProfilePage() {
 
                     </div>
 
-                    {assessment.percentage >= 75 && (
+                    {assessment.percentage >= 75 ? (
 
-                      <p className="mt-3 text-xs font-semibold text-green-700">
-                        ✓ Verified Skill
-                      </p>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold text-green-700">
+                          ✓ Verified Assessment
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                          Passed 75% threshold
+                        </p>
+                      </div>
+
+                    ) : (
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold text-slate-600">
+                          Attempted
+                        </p>
+
+                        <p className="text-xs text-slate-500">
+                          Verification requires 75%
+                        </p>
+                      </div>
 
                     )}
 
@@ -1384,11 +1388,11 @@ export default function CandidateProfilePage() {
           </p>
 
           <h2 className="mt-2 text-2xl font-bold text-slate-950">
-            Projects
+            Projects & Work Samples
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Real projects help demonstrate practical experience beyond a resume.
+            Projects, case studies and practical work can demonstrate ability beyond a resume.
           </p>
 
           {projects.length === 0 ? (
@@ -1396,11 +1400,11 @@ export default function CandidateProfilePage() {
             <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
 
               <div className="text-3xl">
-                💻
+                📁
               </div>
 
               <p className="mt-4 text-sm text-slate-500">
-                Candidate hasn&apos;t added any projects yet.
+                Candidate hasn&apos;t added any projects or work samples yet.
               </p>
 
             </div>
@@ -1474,7 +1478,7 @@ export default function CandidateProfilePage() {
                               rel="noopener noreferrer"
                               className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-center text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                             >
-                              GitHub ↗
+                              Source / Portfolio ↗
                             </a>
 
                           )}
@@ -1489,7 +1493,7 @@ export default function CandidateProfilePage() {
                               rel="noopener noreferrer"
                               className="rounded-xl bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
                             >
-                              Live Demo ↗
+                              View Work ↗
                             </a>
 
                           )}

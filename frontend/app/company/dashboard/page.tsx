@@ -417,7 +417,7 @@ export default function CompanyDashboard() {
             </h1>
 
             <p className="mt-4 leading-7 text-slate-600">
-              We couldn&apos;t find a company profile for your account. Create your company profile to start posting jobs and finding freshers.
+              We couldn&apos;t find a company profile for your account. Create your company profile to start posting jobs and discovering entry-level candidates.
             </p>
 
             {error && (
@@ -498,6 +498,13 @@ export default function CompanyDashboard() {
               Shortlisted
             </Link>
 
+            <Link
+              href="/company/pricing"
+              className="hidden text-sm font-medium text-slate-600 hover:text-slate-950 lg:block"
+            >
+              Plans
+            </Link>
+
             <NotificationBell />
 
             <button
@@ -530,8 +537,8 @@ export default function CompanyDashboard() {
               👋
             </h1>
 
-            <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Track your hiring pipeline, review applicants and discover skilled freshers.
+            <p className="mt-3 max-w-3xl leading-7 text-slate-600">
+              Track your hiring pipeline, review applicants and discover freshers across technical and non-technical roles using skills, verified assessments and work evidence.
             </p>
 
           </div>
@@ -922,6 +929,10 @@ export default function CompanyDashboard() {
               Recent Applicants
             </h2>
 
+            <p className="mt-2 text-sm text-slate-500">
+              Open a candidate profile to review their role, skills, verified assessments and work samples.
+            </p>
+
           </div>
 
           {recentApplicants.length === 0 ? (
@@ -976,6 +987,13 @@ export default function CompanyDashboard() {
                         </span>
                       </p>
 
+                      {application.candidate?.preferred_role && (
+                        <p className="mt-1 text-xs text-blue-600">
+                          Preferred role:{" "}
+                          {application.candidate.preferred_role}
+                        </p>
+                      )}
+
                       <p className="mt-1 text-xs text-slate-400">
                         {new Date(
                           application.created_at
@@ -1003,7 +1021,7 @@ export default function CompanyDashboard() {
                       href={`/company/candidates/${application.candidate_id}`}
                       className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                     >
-                      View Profile
+                      Review Evidence
                     </Link>
 
                   </div>
@@ -1068,7 +1086,7 @@ export default function CompanyDashboard() {
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
 
             <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
-              Talent Search
+              Evidence-Based Hiring
             </p>
 
             <h2 className="mt-4 text-2xl font-bold text-slate-950">
@@ -1076,7 +1094,7 @@ export default function CompanyDashboard() {
             </h2>
 
             <p className="mt-4 text-sm leading-6 text-slate-600">
-              Search candidates using verified skills, assessments, location and project evidence.
+              Search candidates across software, AI, data, HR, sales, marketing and other roles using skills, verified assessments, location and work evidence.
             </p>
 
             <Link
@@ -1094,21 +1112,21 @@ export default function CompanyDashboard() {
 
           <CompanyCard
             title="Find Freshers"
-            description="Discover candidates with verified technical skills."
+            description="Discover technical and non-technical candidates using role-relevant skills, verified assessments and work evidence."
             href="/company/candidates"
             button="Search Candidates →"
           />
 
           <CompanyCard
             title="Post a Job"
-            description="Create an entry-level opportunity and start receiving applications."
+            description="Create an entry-level opportunity and start receiving applications from relevant freshers."
             href="/company/jobs/create"
             button="Post a Job →"
           />
 
           <CompanyCard
             title="My Jobs"
-            description="Manage jobs and review ranked applicants."
+            description="Manage your opportunities and review applicants through the hiring pipeline."
             href="/company/jobs"
             button="Manage Jobs →"
           />
@@ -1130,7 +1148,7 @@ export default function CompanyDashboard() {
               </h2>
 
               <p className="mt-2 text-sm text-slate-600">
-                Review candidates you&apos;ve saved for current or future opportunities.
+                Revisit candidates you&apos;ve saved and compare their profiles, verified assessments and work samples before taking the next hiring step.
               </p>
 
             </div>

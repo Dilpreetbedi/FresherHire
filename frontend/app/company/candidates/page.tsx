@@ -42,6 +42,8 @@ type CandidateWithData = Candidate & {
   projects: Project[];
 };
 
+const VERIFIED_THRESHOLD = 75;
+
 export default function CandidatesPage() {
   const router = useRouter();
 
@@ -69,6 +71,9 @@ export default function CandidatesPage() {
   const [skillFilter, setSkillFilter] =
     useState("All");
 
+  const [assessmentFilter, setAssessmentFilter] =
+    useState("All");
+
   const [roleFilter, setRoleFilter] =
     useState("All");
 
@@ -94,8 +99,8 @@ export default function CandidatesPage() {
     loadCandidates();
   }, []);
 
-  function normalizeSkill(skill: string) {
-    return skill
+  function normalizeValue(value: string) {
+    return value
       .trim()
       .toLowerCase();
   }
@@ -383,23 +388,6 @@ export default function CandidatesPage() {
     }
   }
 
-  function getBestScore(
-    candidate: CandidateWithData
-  ) {
-    if (
-      candidate.assessments.length === 0
-    ) {
-      return 0;
-    }
-
-    return Math.max(
-      ...candidate.assessments.map(
-        (assessment) =>
-          assessment.percentage
-      )
-    );
-  }
-
   function getBestAssessments(
     candidate: CandidateWithData
   ) {
@@ -411,7 +399,7 @@ export default function CandidatesPage() {
     candidate.assessments.forEach(
       (assessment) => {
         const key =
-          normalizeSkill(
+          normalizeValue(
             assessment.skill_name
           );
 
@@ -440,21 +428,52 @@ export default function CandidatesPage() {
     );
   }
 
-  function isSkillVerified(
-    candidate: CandidateWithData,
-    skillName: string
+  function getBestScore(
+    candidate: CandidateWithData
   ) {
-    const normalized =
-      normalizeSkill(
-        skillName
-      );
+    const bestAssessments =
+      getBestAssessments(candidate);
 
-    return candidate.assessments.some(
+    if (
+      bestAssessments.length === 0
+    ) {
+      return 0;
+    }
+
+    return Math.max(
+      ...bestAssessments.map(
+        (assessment) =>
+          assessment.percentage
+      )
+    );
+  }
+
+  function hasVerifiedAssessment(
+    candidate: CandidateWithData
+  ) {
+    return getBestAssessments(
+      candidate
+    ).some(
       (assessment) =>
-        normalizeSkill(
+        assessment.percentage >=
+        VERIFIED_THRESHOLD
+    );
+  }
+
+  function getAssessmentResult(
+    candidate: CandidateWithData,
+    assessmentName: string
+  ) {
+    return getBestAssessments(
+      candidate
+    ).find(
+      (assessment) =>
+        normalizeValue(
           assessment.skill_name
-        ) === normalized &&
-        assessment.percentage >= 80
+        ) ===
+        normalizeValue(
+          assessmentName
+        )
     );
   }
 
@@ -466,6 +485,27 @@ export default function CandidatesPage() {
             candidate.skills.map(
               (skill) =>
                 skill.skill_name
+            )
+        );
+
+      return [
+        "All",
+        ...Array.from(
+          new Set(values)
+        ).sort(),
+      ];
+    }, [candidates]);
+
+  const availableAssessments =
+    useMemo(() => {
+      const values =
+        candidates.flatMap(
+          (candidate) =>
+            getBestAssessments(
+              candidate
+            ).map(
+              (assessment) =>
+                assessment.skill_name
             )
         );
 
@@ -550,6 +590,11 @@ export default function CandidatesPage() {
       return candidates
         .filter(
           (candidate) => {
+            const bestAssessments =
+              getBestAssessments(
+                candidate
+              );
+
             const searchText =
               search
                 .trim()
@@ -584,6 +629,14 @@ export default function CandidatesPage() {
                     .includes(
                       searchText
                     )
+              ) ||
+              bestAssessments.some(
+                (assessment) =>
+                  assessment.skill_name
+                    .toLowerCase()
+                    .includes(
+                      searchText
+                    )
               );
 
             const skillMatch =
@@ -591,26 +644,40 @@ export default function CandidatesPage() {
                 "All" ||
               candidate.skills.some(
                 (skill) =>
-                  normalizeSkill(
+                  normalizeValue(
                     skill.skill_name
                   ) ===
-                  normalizeSkill(
+                  normalizeValue(
                     skillFilter
                   )
               );
 
-            const verifiedSkillMatch =
+            const assessmentMatch =
+              assessmentFilter ===
+                "All" ||
+              bestAssessments.some(
+                (assessment) =>
+                  normalizeValue(
+                    assessment.skill_name
+                  ) ===
+                  normalizeValue(
+                    assessmentFilter
+                  )
+              );
+
+            const verifiedMatch =
               !verifiedOnly ||
               (
-                skillFilter !== "All"
-                  ? isSkillVerified(
-                      candidate,
-                      skillFilter
+                assessmentFilter !== "All"
+                  ? Boolean(
+                      getAssessmentResult(
+                        candidate,
+                        assessmentFilter
+                      )?.percentage >=
+                        VERIFIED_THRESHOLD
                     )
-                  : candidate.assessments.some(
-                      (assessment) =>
-                        assessment.percentage >=
-                        80
+                  : hasVerifiedAssessment(
+                      candidate
                     )
               );
 
@@ -657,7 +724,8 @@ export default function CandidatesPage() {
             return (
               searchMatch &&
               skillMatch &&
-              verifiedSkillMatch &&
+              assessmentMatch &&
+              verifiedMatch &&
               roleMatch &&
               locationMatch &&
               graduationMatch &&
@@ -676,6 +744,7 @@ export default function CandidatesPage() {
       candidates,
       search,
       skillFilter,
+      assessmentFilter,
       roleFilter,
       locationFilter,
       graduationFilter,
@@ -689,6 +758,9 @@ export default function CandidatesPage() {
     search.trim(),
     skillFilter !== "All"
       ? skillFilter
+      : "",
+    assessmentFilter !== "All"
+      ? assessmentFilter
       : "",
     roleFilter !== "All"
       ? roleFilter
@@ -717,6 +789,7 @@ export default function CandidatesPage() {
     setActionError("");
     setSearch("");
     setSkillFilter("All");
+    setAssessmentFilter("All");
     setRoleFilter("All");
     setLocationFilter("All");
     setGraduationFilter("All");
@@ -1011,8 +1084,8 @@ export default function CandidatesPage() {
             Find Freshers
           </h1>
 
-          <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-            Discover entry-level candidates using skills, verified assessments, projects, education and profile evidence.
+          <p className="mt-3 max-w-3xl leading-7 text-slate-600">
+            Discover entry-level candidates across technical and non-technical roles using skills, verified assessments, work samples, education and profile evidence.
           </p>
 
         </div>
@@ -1028,7 +1101,7 @@ export default function CandidatesPage() {
               </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                Narrow candidates using verified evidence.
+                Filter by role, skills, assessment evidence and profile details.
               </p>
 
             </div>
@@ -1061,7 +1134,7 @@ export default function CandidatesPage() {
                     e.target.value
                   )
                 }
-                placeholder="Name, role, skill, degree, location..."
+                placeholder="Name, role, skill, assessment, degree, location..."
                 className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
 
@@ -1107,7 +1180,44 @@ export default function CandidatesPage() {
             <div>
 
               <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Minimum Score
+                Assessment
+              </label>
+
+              <select
+                value={
+                  assessmentFilter
+                }
+                onChange={(e) =>
+                  setAssessmentFilter(
+                    e.target.value
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              >
+
+                {availableAssessments.map(
+                  (assessment) => (
+                    <option
+                      key={
+                        assessment
+                      }
+                      value={
+                        assessment
+                      }
+                    >
+                      {assessment}
+                    </option>
+                  )
+                )}
+
+              </select>
+
+            </div>
+
+            <div>
+
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Minimum Assessment Score
               </label>
 
               <select
@@ -1130,8 +1240,8 @@ export default function CandidatesPage() {
                   60%+
                 </option>
 
-                <option value="70">
-                  70%+
+                <option value="75">
+                  75%+ Verified
                 </option>
 
                 <option value="80">
@@ -1275,10 +1385,10 @@ export default function CandidatesPage() {
                 )
               }
               label={
-                skillFilter ===
+                assessmentFilter ===
                 "All"
-                  ? "✓ Has Verified Skill"
-                  : `✓ ${skillFilter} Verified`
+                  ? "✓ Has Verified Assessment"
+                  : `✓ ${assessmentFilter} Verified`
               }
             />
 
@@ -1303,7 +1413,7 @@ export default function CandidatesPage() {
                   !projectsOnly
                 )
               }
-              label="💻 Has Projects"
+              label="📁 Has Work Samples"
             />
 
           </div>
@@ -1434,7 +1544,7 @@ export default function CandidatesPage() {
                     bestAssessments.filter(
                       (assessment) =>
                         assessment.percentage >=
-                        80
+                        VERIFIED_THRESHOLD
                     ).length;
 
                   const shortlisted =
@@ -1477,7 +1587,7 @@ export default function CandidatesPage() {
                             <p className="mt-2 text-sm text-slate-500">
 
                               {candidate.degree ||
-                                "Degree not provided"}
+                                "Qualification not provided"}
 
                               {candidate.graduation_year
                                 ? ` • ${candidate.graduation_year}`
@@ -1500,9 +1610,9 @@ export default function CandidatesPage() {
                               {candidate.projects.length >
                                 0 && (
                                 <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
-                                  💻{" "}
+                                  📁{" "}
                                   {candidate.projects.length}{" "}
-                                  Project
+                                  Work Sample
                                   {candidate.projects.length !==
                                   1
                                     ? "s"
@@ -1515,7 +1625,11 @@ export default function CandidatesPage() {
                                 <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
                                   ✓{" "}
                                   {verifiedCount}{" "}
-                                  Verified
+                                  Verified Assessment
+                                  {verifiedCount !==
+                                  1
+                                    ? "s"
+                                    : ""}
                                 </span>
                               )}
 
@@ -1534,7 +1648,7 @@ export default function CandidatesPage() {
                           <p
                             className={`mt-1 text-3xl font-bold ${
                               bestScore >=
-                              80
+                              VERIFIED_THRESHOLD
                                 ? "text-green-700"
                                 : bestScore >=
                                   60
@@ -1542,13 +1656,22 @@ export default function CandidatesPage() {
                                 : "text-slate-950"
                             }`}
                           >
-                            {bestScore}%
+                            {bestAssessments.length > 0
+                              ? `${bestScore}%`
+                              : "—"}
                           </p>
 
                           {bestScore >=
-                            80 && (
+                            VERIFIED_THRESHOLD && (
                             <p className="mt-1 text-xs font-semibold text-green-700">
                               ✓ Verified
+                            </p>
+                          )}
+
+                          {bestAssessments.length ===
+                            0 && (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Not attempted
                             </p>
                           )}
 
@@ -1574,41 +1697,22 @@ export default function CandidatesPage() {
                           ) : (
 
                             candidate.skills.map(
-                              (skill) => {
-                                const verified =
-                                  isSkillVerified(
-                                    candidate,
-                                    skill.skill_name
-                                  );
+                              (
+                                skill,
+                                index
+                              ) => (
+                                <span
+                                  key={`${candidate.id}-skill-${index}-${skill.skill_name}`}
+                                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700"
+                                >
+                                  {skill.skill_name}
 
-                                return (
-                                  <span
-                                    key={`${candidate.id}-${skill.skill_name}`}
-                                    className={`rounded-full border px-3 py-1.5 text-xs ${
-                                      verified
-                                        ? "border-green-200 bg-green-50 text-green-700"
-                                        : "border-slate-200 bg-slate-50 text-slate-700"
-                                    }`}
-                                  >
-
-                                    {verified &&
-                                      "✓ "}
-
-                                    {skill.skill_name}
-
-                                    <span
-                                      className={`ml-2 ${
-                                        verified
-                                          ? "text-green-600/80"
-                                          : "text-slate-500"
-                                      }`}
-                                    >
-                                      {skill.skill_level}
-                                    </span>
-
+                                  <span className="ml-2 text-slate-500">
+                                    {skill.skill_level}
                                   </span>
-                                );
-                              }
+
+                                </span>
+                              )
                             )
                           )}
 
@@ -1622,7 +1726,7 @@ export default function CandidatesPage() {
                         <div className="mt-5">
 
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            Assessment Evidence
+                            Verified Skills & Assessments
                           </p>
 
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -1630,36 +1734,45 @@ export default function CandidatesPage() {
                             {bestAssessments.map(
                               (
                                 assessment
-                              ) => (
+                              ) => {
 
-                                <span
-                                  key={`${candidate.id}-${assessment.skill_name}`}
-                                  className={`rounded-lg border px-3 py-2 text-xs ${
-                                    assessment.percentage >=
-                                    80
-                                      ? "border-green-200 bg-green-50"
-                                      : "border-slate-200 bg-slate-50"
-                                  }`}
-                                >
+                                const verified =
+                                  assessment.percentage >=
+                                  VERIFIED_THRESHOLD;
 
-                                  <span className="text-slate-700">
-                                    {assessment.skill_name}
-                                  </span>
-
+                                return (
                                   <span
-                                    className={`ml-2 font-semibold ${
-                                      assessment.percentage >=
-                                      80
-                                        ? "text-green-700"
-                                        : "text-slate-600"
+                                    key={`${candidate.id}-${assessment.skill_name}`}
+                                    className={`rounded-lg border px-3 py-2 text-xs ${
+                                      verified
+                                        ? "border-green-200 bg-green-50"
+                                        : "border-slate-200 bg-slate-50"
                                     }`}
                                   >
-                                    {assessment.percentage}%
+
+                                    <span className="text-slate-700">
+                                      {assessment.skill_name}
+                                    </span>
+
+                                    <span
+                                      className={`ml-2 font-semibold ${
+                                        verified
+                                          ? "text-green-700"
+                                          : "text-slate-600"
+                                      }`}
+                                    >
+                                      {assessment.percentage}%
+                                    </span>
+
+                                    {verified && (
+                                      <span className="ml-2 font-semibold text-green-700">
+                                        ✓
+                                      </span>
+                                    )}
+
                                   </span>
-
-                                </span>
-
-                              )
+                                );
+                              }
                             )}
 
                           </div>
