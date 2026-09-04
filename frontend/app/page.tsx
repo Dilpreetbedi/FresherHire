@@ -620,16 +620,55 @@ export default function Home() {
       </section>
 
       <footer className="border-t border-slate-200 bg-white px-4 py-8 sm:px-6">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 text-sm text-slate-500 md:flex-row">
-          <div className="font-semibold text-slate-800">
-            Fresher
-            <span className="text-blue-600">
-              Hire
-            </span>
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <Link
+                href="/"
+                className="text-lg font-bold tracking-tight text-slate-900"
+              >
+                Fresher<span className="text-blue-600">Hire</span>
+              </Link>
+
+              <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+                A recruitment technology platform helping freshers prove their
+                skills and companies discover entry-level talent.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm font-medium text-slate-600">
+              <Link
+                href="/terms"
+                className="transition hover:text-blue-600"
+              >
+                Terms & Conditions
+              </Link>
+
+              <Link
+                href="/privacy"
+                className="transition hover:text-blue-600"
+              >
+                Privacy Policy
+              </Link>
+
+              <Link
+                href="/refund-policy"
+                className="transition hover:text-blue-600"
+              >
+                Refund & Cancellation
+              </Link>
+
+              <Link
+                href="/contact"
+                className="transition hover:text-blue-600"
+              >
+                Contact Us
+              </Link>
+            </div>
           </div>
 
-          <div>
-            © 2026 FresherHire
+          <div className="mt-7 border-t border-slate-200 pt-5 text-sm text-slate-500">
+            © 2026 FresherHire. All rights reserved.
           </div>
         </div>
       </footer>
