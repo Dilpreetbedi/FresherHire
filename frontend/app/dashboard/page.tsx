@@ -16,6 +16,7 @@ type Profile = {
   location: string;
   preferred_role: string;
   resume_url: string | null;
+  resume_headline: string | null;
 };
 
 type Skill = {
@@ -36,6 +37,114 @@ type Project = {
   id: number;
 };
 
+type Education = {
+  id: number;
+  user_id: string;
+  education_level:
+    | "10th"
+    | "12th"
+    | "diploma"
+    | "bachelors"
+    | "masters"
+    | "doctorate"
+    | "other";
+  institution_name: string;
+  board_or_university: string | null;
+  degree_or_course: string | null;
+  specialization: string | null;
+  start_year: number | null;
+  end_year: number | null;
+  score_type:
+    | "percentage"
+    | "cgpa_10"
+    | "cgpa_4"
+    | "other"
+    | null;
+  score_value: number | null;
+  location: string | null;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type Employment = {
+  id: number;
+  user_id: string;
+  employment_type:
+    | "full_time"
+    | "internship"
+    | "part_time"
+    | "contract"
+    | "freelance"
+    | "apprenticeship"
+    | "other";
+  company_name: string;
+  role_title: string;
+  location: string | null;
+  work_mode: "onsite" | "hybrid" | "remote" | null;
+  start_date: string;
+  end_date: string | null;
+  is_current: boolean;
+  description: string | null;
+  skills_used: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type EducationForm = {
+  education_level: Education["education_level"];
+  institution_name: string;
+  board_or_university: string;
+  degree_or_course: string;
+  specialization: string;
+  start_year: string;
+  end_year: string;
+  score_type: NonNullable<Education["score_type"]> | "";
+  score_value: string;
+  location: string;
+  is_current: boolean;
+};
+
+type EmploymentForm = {
+  employment_type: Employment["employment_type"];
+  company_name: string;
+  role_title: string;
+  location: string;
+  work_mode: NonNullable<Employment["work_mode"]> | "";
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  description: string;
+  skills_used: string;
+};
+
+const EMPTY_EDUCATION_FORM: EducationForm = {
+  education_level: "bachelors",
+  institution_name: "",
+  board_or_university: "",
+  degree_or_course: "",
+  specialization: "",
+  start_year: "",
+  end_year: "",
+  score_type: "",
+  score_value: "",
+  location: "",
+  is_current: false,
+};
+
+const EMPTY_EMPLOYMENT_FORM: EmploymentForm = {
+  employment_type: "internship",
+  company_name: "",
+  role_title: "",
+  location: "",
+  work_mode: "",
+  start_date: "",
+  end_date: "",
+  is_current: false,
+  description: "",
+  skills_used: "",
+};
+
 export default function Dashboard() {
   const router = useRouter();
 
@@ -43,13 +152,38 @@ export default function Dashboard() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [assessments, setAssessments] = useState<AssessmentResult[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [education, setEducation] = useState<Education[]>([]);
+  const [employment, setEmployment] = useState<Employment[]>([]);
+
   const [loading, setLoading] = useState(true);
+
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneSaving, setPhoneSaving] = useState(false);
   const [phoneMessage, setPhoneMessage] = useState("");
+
+  const [resumeHeadline, setResumeHeadline] = useState("");
+  const [headlineSaving, setHeadlineSaving] = useState(false);
+  const [headlineMessage, setHeadlineMessage] = useState("");
+
   const [resumeUploading, setResumeUploading] = useState(false);
   const [resumeMessage, setResumeMessage] = useState("");
   const [resumeSignedUrl, setResumeSignedUrl] = useState<string | null>(null);
+
+  const [showEducationForm, setShowEducationForm] = useState(false);
+  const [educationForm, setEducationForm] =
+    useState<EducationForm>(EMPTY_EDUCATION_FORM);
+  const [educationEditingId, setEducationEditingId] =
+    useState<number | null>(null);
+  const [educationSaving, setEducationSaving] = useState(false);
+  const [educationMessage, setEducationMessage] = useState("");
+
+  const [showEmploymentForm, setShowEmploymentForm] = useState(false);
+  const [employmentForm, setEmploymentForm] =
+    useState<EmploymentForm>(EMPTY_EMPLOYMENT_FORM);
+  const [employmentEditingId, setEmploymentEditingId] =
+    useState<number | null>(null);
+  const [employmentSaving, setEmploymentSaving] = useState(false);
+  const [employmentMessage, setEmploymentMessage] = useState("");
 
   useEffect(() => {
     loadDashboard();
@@ -67,6 +201,7 @@ export default function Dashboard() {
 
     if (markerIndex !== -1) {
       const path = resumeValue.slice(markerIndex + marker.length);
+
       try {
         return decodeURIComponent(path);
       } catch {
@@ -137,25 +272,42 @@ export default function Dashboard() {
         return;
       }
 
-      const [skillsResult, assessmentResult, projectsResult] =
-        await Promise.all([
-          supabase
-            .from("skills")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false }),
+      const [
+        skillsResult,
+        assessmentResult,
+        projectsResult,
+        educationResult,
+        employmentResult,
+      ] = await Promise.all([
+        supabase
+          .from("skills")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
 
-          supabase
-            .from("assessment_results")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false }),
+        supabase
+          .from("assessment_results")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
 
-          supabase
-            .from("projects")
-            .select("id")
-            .eq("user_id", user.id),
-        ]);
+        supabase
+          .from("projects")
+          .select("id")
+          .eq("user_id", user.id),
+
+        supabase
+          .from("education_details")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("end_year", { ascending: false, nullsFirst: true }),
+
+        supabase
+          .from("employment_details")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("start_date", { ascending: false }),
+      ]);
 
       if (skillsResult.error) {
         console.error("Skills error:", skillsResult.error);
@@ -169,14 +321,26 @@ export default function Dashboard() {
         console.error("Projects error:", projectsResult.error);
       }
 
+      if (educationResult.error) {
+        console.error("Education error:", educationResult.error);
+      }
+
+      if (employmentResult.error) {
+        console.error("Employment error:", employmentResult.error);
+      }
+
       setProfile(profileData);
       setPhoneNumber(profileData.phone_number || "");
+      setResumeHeadline(profileData.resume_headline || "");
 
       await createResumeSignedUrl(profileData.resume_url, user.id);
 
       setSkills(skillsResult.data || []);
       setAssessments(assessmentResult.data || []);
       setProjects(projectsResult.data || []);
+      setEducation(educationResult.data || []);
+      setEmployment(employmentResult.data || []);
+
       setLoading(false);
     } catch (err) {
       console.error("Dashboard load error:", err);
@@ -215,6 +379,8 @@ export default function Dashboard() {
       profile?.preferred_role
   );
 
+  const hasHeadline = Boolean(profile?.resume_headline?.trim());
+  const hasEducation = education.length > 0;
   const hasSkills = skills.length > 0;
   const hasAssessment = assessments.length > 0;
   const hasProject = projects.length > 0;
@@ -226,7 +392,21 @@ export default function Dashboard() {
       completed: basicProfileComplete,
       href: "#profile",
       description:
-        "Complete your contact details, education, location and preferred role.",
+        "Complete your contact details, qualification, location and preferred role.",
+    },
+    {
+      name: "Resume Headline",
+      completed: hasHeadline,
+      href: "#resume-headline",
+      description:
+        "Add a short professional headline recruiters can understand quickly.",
+    },
+    {
+      name: "Education",
+      completed: hasEducation,
+      href: "#education",
+      description:
+        "Add school, college, diploma or higher-education details.",
     },
     {
       name: "Add Skills",
@@ -337,6 +517,522 @@ export default function Dashboard() {
     setPhoneSaving(false);
   }
 
+  async function saveResumeHeadline() {
+    if (headlineSaving) return;
+
+    const headline = resumeHeadline.trim();
+
+    if (!headline) {
+      setHeadlineMessage("Please enter your resume headline.");
+      return;
+    }
+
+    if (headline.length > 220) {
+      setHeadlineMessage("Resume headline must be 220 characters or less.");
+      return;
+    }
+
+    setHeadlineSaving(true);
+    setHeadlineMessage("");
+
+    try {
+      const auth = await requireFresher();
+
+      if (!auth.allowed) {
+        setHeadlineSaving(false);
+        router.replace(auth.redirectTo!);
+        return;
+      }
+
+      const user = auth.user;
+
+      if (!user) {
+        setHeadlineSaving(false);
+        router.replace("/login");
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ resume_headline: headline })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Headline update error:", updateError);
+        setHeadlineMessage(
+          updateError.message || "Could not save resume headline."
+        );
+        setHeadlineSaving(false);
+        return;
+      }
+
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              resume_headline: headline,
+            }
+          : current
+      );
+
+      setResumeHeadline(headline);
+      setHeadlineMessage("Resume headline saved successfully.");
+    } catch (err) {
+      console.error("Headline save error:", err);
+      setHeadlineMessage(
+        err instanceof Error ? err.message : "Could not save resume headline."
+      );
+    }
+
+    setHeadlineSaving(false);
+  }
+
+  function openNewEducationForm() {
+    setEducationEditingId(null);
+    setEducationForm(EMPTY_EDUCATION_FORM);
+    setEducationMessage("");
+    setShowEducationForm(true);
+  }
+
+  function openEditEducationForm(item: Education) {
+    setEducationEditingId(item.id);
+    setEducationForm({
+      education_level: item.education_level,
+      institution_name: item.institution_name || "",
+      board_or_university: item.board_or_university || "",
+      degree_or_course: item.degree_or_course || "",
+      specialization: item.specialization || "",
+      start_year: item.start_year ? String(item.start_year) : "",
+      end_year: item.end_year ? String(item.end_year) : "",
+      score_type: item.score_type || "",
+      score_value:
+        item.score_value !== null && item.score_value !== undefined
+          ? String(item.score_value)
+          : "",
+      location: item.location || "",
+      is_current: item.is_current,
+    });
+    setEducationMessage("");
+    setShowEducationForm(true);
+  }
+
+  function closeEducationForm() {
+    if (educationSaving) return;
+    setShowEducationForm(false);
+    setEducationEditingId(null);
+    setEducationForm(EMPTY_EDUCATION_FORM);
+    setEducationMessage("");
+  }
+
+  async function saveEducation() {
+    if (educationSaving) return;
+
+    const institution = educationForm.institution_name.trim();
+
+    if (!institution) {
+      setEducationMessage("Please enter the institution name.");
+      return;
+    }
+
+    const startYear = educationForm.start_year
+      ? Number(educationForm.start_year)
+      : null;
+
+    const endYear =
+      educationForm.is_current || !educationForm.end_year
+        ? null
+        : Number(educationForm.end_year);
+
+    if (
+      startYear !== null &&
+      (!Number.isInteger(startYear) || startYear < 1950 || startYear > 2100)
+    ) {
+      setEducationMessage("Please enter a valid start year.");
+      return;
+    }
+
+    if (
+      endYear !== null &&
+      (!Number.isInteger(endYear) || endYear < 1950 || endYear > 2100)
+    ) {
+      setEducationMessage("Please enter a valid end year.");
+      return;
+    }
+
+    if (
+      startYear !== null &&
+      endYear !== null &&
+      endYear < startYear
+    ) {
+      setEducationMessage("End year cannot be earlier than start year.");
+      return;
+    }
+
+    const scoreValue = educationForm.score_value
+      ? Number(educationForm.score_value)
+      : null;
+
+    if (
+      scoreValue !== null &&
+      (Number.isNaN(scoreValue) || scoreValue < 0)
+    ) {
+      setEducationMessage("Please enter a valid score.");
+      return;
+    }
+
+    setEducationSaving(true);
+    setEducationMessage("");
+
+    try {
+      const auth = await requireFresher();
+
+      if (!auth.allowed) {
+        setEducationSaving(false);
+        router.replace(auth.redirectTo!);
+        return;
+      }
+
+      const user = auth.user;
+
+      if (!user) {
+        setEducationSaving(false);
+        router.replace("/login");
+        return;
+      }
+
+      const payload = {
+        user_id: user.id,
+        education_level: educationForm.education_level,
+        institution_name: institution,
+        board_or_university:
+          educationForm.board_or_university.trim() || null,
+        degree_or_course: educationForm.degree_or_course.trim() || null,
+        specialization: educationForm.specialization.trim() || null,
+        start_year: startYear,
+        end_year: endYear,
+        score_type: educationForm.score_type || null,
+        score_value: scoreValue,
+        location: educationForm.location.trim() || null,
+        is_current: educationForm.is_current,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (educationEditingId) {
+        const { data, error: updateError } = await supabase
+          .from("education_details")
+          .update(payload)
+          .eq("id", educationEditingId)
+          .eq("user_id", user.id)
+          .select("*")
+          .single();
+
+        if (updateError) {
+          console.error("Education update error:", updateError);
+          setEducationMessage(
+            updateError.message || "Could not update education."
+          );
+          setEducationSaving(false);
+          return;
+        }
+
+        setEducation((current) =>
+          current.map((item) =>
+            item.id === educationEditingId ? data : item
+          )
+        );
+      } else {
+        const { data, error: insertError } = await supabase
+          .from("education_details")
+          .insert(payload)
+          .select("*")
+          .single();
+
+        if (insertError) {
+          console.error("Education insert error:", insertError);
+          setEducationMessage(
+            insertError.message || "Could not add education."
+          );
+          setEducationSaving(false);
+          return;
+        }
+
+        setEducation((current) => [data, ...current]);
+      }
+
+      setEducationMessage(
+        educationEditingId
+          ? "Education updated successfully."
+          : "Education added successfully."
+      );
+
+      setEducationEditingId(null);
+      setEducationForm(EMPTY_EDUCATION_FORM);
+
+      window.setTimeout(() => {
+        setShowEducationForm(false);
+        setEducationMessage("");
+      }, 700);
+    } catch (err) {
+      console.error("Education save error:", err);
+      setEducationMessage(
+        err instanceof Error ? err.message : "Could not save education."
+      );
+    }
+
+    setEducationSaving(false);
+  }
+
+  async function deleteEducation(id: number) {
+    const confirmed = window.confirm(
+      "Delete this education entry?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const auth = await requireFresher();
+
+      if (!auth.allowed) {
+        router.replace(auth.redirectTo!);
+        return;
+      }
+
+      const user = auth.user;
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("education_details")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Education delete error:", error);
+        window.alert(error.message || "Could not delete education.");
+        return;
+      }
+
+      setEducation((current) =>
+        current.filter((item) => item.id !== id)
+      );
+    } catch (err) {
+      console.error("Education delete error:", err);
+      window.alert("Could not delete education.");
+    }
+  }
+
+  function openNewEmploymentForm() {
+    setEmploymentEditingId(null);
+    setEmploymentForm(EMPTY_EMPLOYMENT_FORM);
+    setEmploymentMessage("");
+    setShowEmploymentForm(true);
+  }
+
+  function openEditEmploymentForm(item: Employment) {
+    setEmploymentEditingId(item.id);
+    setEmploymentForm({
+      employment_type: item.employment_type,
+      company_name: item.company_name || "",
+      role_title: item.role_title || "",
+      location: item.location || "",
+      work_mode: item.work_mode || "",
+      start_date: item.start_date || "",
+      end_date: item.end_date || "",
+      is_current: item.is_current,
+      description: item.description || "",
+      skills_used: item.skills_used || "",
+    });
+    setEmploymentMessage("");
+    setShowEmploymentForm(true);
+  }
+
+  function closeEmploymentForm() {
+    if (employmentSaving) return;
+    setShowEmploymentForm(false);
+    setEmploymentEditingId(null);
+    setEmploymentForm(EMPTY_EMPLOYMENT_FORM);
+    setEmploymentMessage("");
+  }
+
+  async function saveEmployment() {
+    if (employmentSaving) return;
+
+    const companyName = employmentForm.company_name.trim();
+    const roleTitle = employmentForm.role_title.trim();
+
+    if (!companyName) {
+      setEmploymentMessage("Please enter the company or organisation name.");
+      return;
+    }
+
+    if (!roleTitle) {
+      setEmploymentMessage("Please enter your role or designation.");
+      return;
+    }
+
+    if (!employmentForm.start_date) {
+      setEmploymentMessage("Please select a start date.");
+      return;
+    }
+
+    if (
+      !employmentForm.is_current &&
+      employmentForm.end_date &&
+      employmentForm.end_date < employmentForm.start_date
+    ) {
+      setEmploymentMessage("End date cannot be earlier than start date.");
+      return;
+    }
+
+    setEmploymentSaving(true);
+    setEmploymentMessage("");
+
+    try {
+      const auth = await requireFresher();
+
+      if (!auth.allowed) {
+        setEmploymentSaving(false);
+        router.replace(auth.redirectTo!);
+        return;
+      }
+
+      const user = auth.user;
+
+      if (!user) {
+        setEmploymentSaving(false);
+        router.replace("/login");
+        return;
+      }
+
+      const payload = {
+        user_id: user.id,
+        employment_type: employmentForm.employment_type,
+        company_name: companyName,
+        role_title: roleTitle,
+        location: employmentForm.location.trim() || null,
+        work_mode: employmentForm.work_mode || null,
+        start_date: employmentForm.start_date,
+        end_date: employmentForm.is_current
+          ? null
+          : employmentForm.end_date || null,
+        is_current: employmentForm.is_current,
+        description: employmentForm.description.trim() || null,
+        skills_used: employmentForm.skills_used.trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (employmentEditingId) {
+        const { data, error: updateError } = await supabase
+          .from("employment_details")
+          .update(payload)
+          .eq("id", employmentEditingId)
+          .eq("user_id", user.id)
+          .select("*")
+          .single();
+
+        if (updateError) {
+          console.error("Employment update error:", updateError);
+          setEmploymentMessage(
+            updateError.message || "Could not update experience."
+          );
+          setEmploymentSaving(false);
+          return;
+        }
+
+        setEmployment((current) =>
+          current.map((item) =>
+            item.id === employmentEditingId ? data : item
+          )
+        );
+      } else {
+        const { data, error: insertError } = await supabase
+          .from("employment_details")
+          .insert(payload)
+          .select("*")
+          .single();
+
+        if (insertError) {
+          console.error("Employment insert error:", insertError);
+          setEmploymentMessage(
+            insertError.message || "Could not add experience."
+          );
+          setEmploymentSaving(false);
+          return;
+        }
+
+        setEmployment((current) => [data, ...current]);
+      }
+
+      setEmploymentMessage(
+        employmentEditingId
+          ? "Experience updated successfully."
+          : "Experience added successfully."
+      );
+
+      setEmploymentEditingId(null);
+      setEmploymentForm(EMPTY_EMPLOYMENT_FORM);
+
+      window.setTimeout(() => {
+        setShowEmploymentForm(false);
+        setEmploymentMessage("");
+      }, 700);
+    } catch (err) {
+      console.error("Employment save error:", err);
+      setEmploymentMessage(
+        err instanceof Error ? err.message : "Could not save experience."
+      );
+    }
+
+    setEmploymentSaving(false);
+  }
+
+  async function deleteEmployment(id: number) {
+    const confirmed = window.confirm(
+      "Delete this employment or internship entry?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const auth = await requireFresher();
+
+      if (!auth.allowed) {
+        router.replace(auth.redirectTo!);
+        return;
+      }
+
+      const user = auth.user;
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("employment_details")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Employment delete error:", error);
+        window.alert(error.message || "Could not delete experience.");
+        return;
+      }
+
+      setEmployment((current) =>
+        current.filter((item) => item.id !== id)
+      );
+    } catch (err) {
+      console.error("Employment delete error:", err);
+      window.alert("Could not delete experience.");
+    }
+  }
+
   async function uploadResume(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
@@ -425,6 +1121,69 @@ export default function Dashboard() {
     router.push("/");
   }
 
+  function educationLevelLabel(level: Education["education_level"]) {
+    const labels: Record<Education["education_level"], string> = {
+      "10th": "Class X",
+      "12th": "Class XII",
+      diploma: "Diploma",
+      bachelors: "Bachelor's",
+      masters: "Master's",
+      doctorate: "Doctorate / PhD",
+      other: "Other Education",
+    };
+
+    return labels[level];
+  }
+
+  function scoreLabel(item: Education) {
+    if (item.score_value === null || item.score_value === undefined) {
+      return null;
+    }
+
+    if (item.score_type === "percentage") {
+      return `${item.score_value}%`;
+    }
+
+    if (item.score_type === "cgpa_10") {
+      return `${item.score_value}/10 CGPA`;
+    }
+
+    if (item.score_type === "cgpa_4") {
+      return `${item.score_value}/4 CGPA`;
+    }
+
+    return String(item.score_value);
+  }
+
+  function employmentTypeLabel(type: Employment["employment_type"]) {
+    const labels: Record<Employment["employment_type"], string> = {
+      full_time: "Full Time",
+      internship: "Internship",
+      part_time: "Part Time",
+      contract: "Contract",
+      freelance: "Freelance",
+      apprenticeship: "Apprenticeship",
+      other: "Other",
+    };
+
+    return labels[type];
+  }
+
+  function formatMonthYear(value: string | null) {
+    if (!value) return "";
+
+    const date = new Date(`${value}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat("en-IN", {
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
@@ -486,8 +1245,8 @@ export default function Dashboard() {
             </h1>
 
             <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Build your profile, prove your skills with role-relevant assessments,
-              showcase your work and discover entry-level opportunities.
+              Build a complete fresher profile with education, experience,
+              skills, assessments, work samples and your resume.
             </p>
           </div>
 
@@ -538,7 +1297,7 @@ export default function Dashboard() {
                   </h2>
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Give recruiters more evidence to evaluate your fit for a role.
+                    Give recruiters more context and evidence before they open your resume.
                   </p>
                 </div>
 
@@ -598,7 +1357,7 @@ export default function Dashboard() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Your phone number stays private and is shared only with eligible recruiters.
+                Keep your basic information accurate and up to date.
               </p>
             </div>
 
@@ -688,6 +1447,13 @@ export default function Dashboard() {
                 : `${100 - profileStrength}% remaining to complete your profile.`}
             </p>
 
+            {employment.length === 0 && (
+              <p className="mt-4 rounded-xl border border-blue-200 bg-white/70 p-3 text-xs leading-5 text-slate-600">
+                Employment or internship history is optional. Add it if you have
+                any professional, freelance or apprenticeship experience.
+              </p>
+            )}
+
             <Link
               href="/assessments"
               className="mt-6 block w-full rounded-xl bg-blue-600 px-5 py-3 text-center font-semibold text-white shadow-sm hover:bg-blue-700"
@@ -696,6 +1462,752 @@ export default function Dashboard() {
             </Link>
           </div>
         </div>
+
+        <section
+          id="resume-headline"
+          className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
+              Resume Headline
+            </p>
+
+            <h2 className="text-2xl font-bold text-slate-950">
+              Tell recruiters who you are in one line
+            </h2>
+
+            <p className="max-w-3xl text-sm leading-6 text-slate-600">
+              Keep it concise and role-focused. Example: B.Tech CSE graduate
+              skilled in Python, AI/ML and FastAPI seeking entry-level AI roles.
+            </p>
+          </div>
+
+          <div className="mt-5">
+            <textarea
+              value={resumeHeadline}
+              onChange={(event) => {
+                setResumeHeadline(event.target.value);
+                setHeadlineMessage("");
+              }}
+              rows={3}
+              maxLength={220}
+              placeholder="Example: B.Com graduate with internship experience in sales and customer engagement seeking entry-level business development roles."
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
+
+            <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-xs text-slate-500">
+                {resumeHeadline.length}/220 characters
+              </span>
+
+              <button
+                type="button"
+                onClick={saveResumeHeadline}
+                disabled={headlineSaving}
+                className="w-fit rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {headlineSaving ? "Saving..." : "Save Headline"}
+              </button>
+            </div>
+
+            {headlineMessage && (
+              <p
+                className={`mt-3 text-sm font-medium ${
+                  headlineMessage.includes("successfully")
+                    ? "text-green-700"
+                    : "text-red-700"
+                }`}
+              >
+                {headlineMessage}
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section
+          id="employment"
+          className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
+                Experience
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">
+                Employment & Internships
+              </h2>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Add full-time work, internships, part-time roles, freelance
+                projects, contract work or apprenticeships.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openNewEmploymentForm}
+              className="w-fit rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              + Add Experience
+            </button>
+          </div>
+
+          {showEmploymentForm && (
+            <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-lg font-bold text-slate-950">
+                  {employmentEditingId
+                    ? "Edit Experience"
+                    : "Add Employment / Internship"}
+                </h3>
+
+                <button
+                  type="button"
+                  onClick={closeEmploymentForm}
+                  className="text-sm font-semibold text-slate-500 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <FormField label="Employment Type">
+                  <select
+                    value={employmentForm.employment_type}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        employment_type:
+                          event.target.value as Employment["employment_type"],
+                      }))
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="full_time">Full Time</option>
+                    <option value="internship">Internship</option>
+                    <option value="part_time">Part Time</option>
+                    <option value="contract">Contract</option>
+                    <option value="freelance">Freelance</option>
+                    <option value="apprenticeship">Apprenticeship</option>
+                    <option value="other">Other</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Company / Organisation">
+                  <input
+                    value={employmentForm.company_name}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        company_name: event.target.value,
+                      }))
+                    }
+                    placeholder="Company name"
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Role / Designation">
+                  <input
+                    value={employmentForm.role_title}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        role_title: event.target.value,
+                      }))
+                    }
+                    placeholder="AI Intern, Sales Executive, HR Intern..."
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Location">
+                  <input
+                    value={employmentForm.location}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        location: event.target.value,
+                      }))
+                    }
+                    placeholder="Noida, Bengaluru, Remote..."
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Work Mode">
+                  <select
+                    value={employmentForm.work_mode}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        work_mode: event.target.value as EmploymentForm["work_mode"],
+                      }))
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select work mode</option>
+                    <option value="onsite">Onsite</option>
+                    <option value="hybrid">Hybrid</option>
+                    <option value="remote">Remote</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Start Date">
+                  <input
+                    type="date"
+                    value={employmentForm.start_date}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        start_date: event.target.value,
+                      }))
+                    }
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="End Date">
+                  <input
+                    type="date"
+                    value={employmentForm.end_date}
+                    disabled={employmentForm.is_current}
+                    onChange={(event) =>
+                      setEmploymentForm((current) => ({
+                        ...current,
+                        end_date: event.target.value,
+                      }))
+                    }
+                    className={`${inputClassName} disabled:bg-slate-100 disabled:text-slate-400`}
+                  />
+                </FormField>
+
+                <div className="flex items-end">
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={employmentForm.is_current}
+                      onChange={(event) =>
+                        setEmploymentForm((current) => ({
+                          ...current,
+                          is_current: event.target.checked,
+                          end_date: event.target.checked
+                            ? ""
+                            : current.end_date,
+                        }))
+                      }
+                      className="h-4 w-4"
+                    />
+                    I currently work here
+                  </label>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <FormField label="Description / Responsibilities">
+                    <textarea
+                      rows={4}
+                      value={employmentForm.description}
+                      onChange={(event) =>
+                        setEmploymentForm((current) => ({
+                          ...current,
+                          description: event.target.value,
+                        }))
+                      }
+                      placeholder="What did you work on? Mention responsibilities, impact, achievements or results."
+                      className={inputClassName}
+                    />
+                  </FormField>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <FormField label="Skills Used">
+                    <input
+                      value={employmentForm.skills_used}
+                      onChange={(event) =>
+                        setEmploymentForm((current) => ({
+                          ...current,
+                          skills_used: event.target.value,
+                        }))
+                      }
+                      placeholder="Python, Sales, Excel, Recruiting, React..."
+                      className={inputClassName}
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              {employmentMessage && (
+                <p
+                  className={`mt-4 text-sm font-medium ${
+                    employmentMessage.includes("successfully")
+                      ? "text-green-700"
+                      : "text-red-700"
+                  }`}
+                >
+                  {employmentMessage}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={saveEmployment}
+                disabled={employmentSaving}
+                className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {employmentSaving
+                  ? "Saving..."
+                  : employmentEditingId
+                  ? "Update Experience"
+                  : "Save Experience"}
+              </button>
+            </div>
+          )}
+
+          {employment.length === 0 ? (
+            <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+              <p className="font-medium text-slate-900">
+                No employment or internship added
+              </p>
+
+              <p className="mt-2 text-sm text-slate-500">
+                This is optional for freshers. Add internships, apprenticeships,
+                freelance work or employment if you have any.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {employment.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold text-slate-950">
+                          {item.role_title}
+                        </h3>
+
+                        <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                          {employmentTypeLabel(item.employment_type)}
+                        </span>
+
+                        {item.is_current && (
+                          <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                            Current
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-1 font-semibold text-slate-700">
+                        {item.company_name}
+                      </p>
+
+                      <p className="mt-2 text-sm text-slate-500">
+                        {formatMonthYear(item.start_date)} —{" "}
+                        {item.is_current
+                          ? "Present"
+                          : formatMonthYear(item.end_date)}
+                        {item.location ? ` • ${item.location}` : ""}
+                        {item.work_mode
+                          ? ` • ${
+                              item.work_mode.charAt(0).toUpperCase() +
+                              item.work_mode.slice(1)
+                            }`
+                          : ""}
+                      </p>
+
+                      {item.description && (
+                        <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                          {item.description}
+                        </p>
+                      )}
+
+                      {item.skills_used && (
+                        <p className="mt-3 text-xs leading-5 text-slate-500">
+                          <span className="font-semibold text-slate-700">
+                            Skills:
+                          </span>{" "}
+                          {item.skills_used}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditEmploymentForm(item)}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => deleteEmployment(item.id)}
+                        className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section
+          id="education"
+          className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
+                Education
+              </p>
+
+              <h2 className="mt-2 text-2xl font-bold text-slate-950">
+                Education Details
+              </h2>
+
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Add Class X, Class XII, diploma, college, bachelor&apos;s,
+                master&apos;s or other education details.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={openNewEducationForm}
+              className="w-fit rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              + Add Education
+            </button>
+          </div>
+
+          {showEducationForm && (
+            <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50/50 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-lg font-bold text-slate-950">
+                  {educationEditingId
+                    ? "Edit Education"
+                    : "Add Education"}
+                </h3>
+
+                <button
+                  type="button"
+                  onClick={closeEducationForm}
+                  className="text-sm font-semibold text-slate-500 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <FormField label="Education Level">
+                  <select
+                    value={educationForm.education_level}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        education_level:
+                          event.target.value as Education["education_level"],
+                      }))
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="10th">Class X / 10th</option>
+                    <option value="12th">Class XII / 12th</option>
+                    <option value="diploma">Diploma</option>
+                    <option value="bachelors">Bachelor&apos;s</option>
+                    <option value="masters">Master&apos;s</option>
+                    <option value="doctorate">Doctorate / PhD</option>
+                    <option value="other">Other</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Institution / School / College">
+                  <input
+                    value={educationForm.institution_name}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        institution_name: event.target.value,
+                      }))
+                    }
+                    placeholder="School or college name"
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Board / University">
+                  <input
+                    value={educationForm.board_or_university}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        board_or_university: event.target.value,
+                      }))
+                    }
+                    placeholder="CBSE, ICSE, Chandigarh University..."
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Degree / Course">
+                  <input
+                    value={educationForm.degree_or_course}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        degree_or_course: event.target.value,
+                      }))
+                    }
+                    placeholder="B.Tech, B.Com, MBA, Science..."
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Specialization">
+                  <input
+                    value={educationForm.specialization}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        specialization: event.target.value,
+                      }))
+                    }
+                    placeholder="Computer Science, Finance, Marketing..."
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Location">
+                  <input
+                    value={educationForm.location}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        location: event.target.value,
+                      }))
+                    }
+                    placeholder="Chandigarh, Bareilly..."
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="Start Year">
+                  <input
+                    type="number"
+                    min="1950"
+                    max="2100"
+                    value={educationForm.start_year}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        start_year: event.target.value,
+                      }))
+                    }
+                    placeholder="2021"
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <FormField label="End Year">
+                  <input
+                    type="number"
+                    min="1950"
+                    max="2100"
+                    disabled={educationForm.is_current}
+                    value={educationForm.end_year}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        end_year: event.target.value,
+                      }))
+                    }
+                    placeholder="2025"
+                    className={`${inputClassName} disabled:bg-slate-100 disabled:text-slate-400`}
+                  />
+                </FormField>
+
+                <FormField label="Score Type">
+                  <select
+                    value={educationForm.score_type}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        score_type:
+                          event.target.value as EducationForm["score_type"],
+                      }))
+                    }
+                    className={inputClassName}
+                  >
+                    <option value="">Select score type</option>
+                    <option value="percentage">Percentage</option>
+                    <option value="cgpa_10">CGPA out of 10</option>
+                    <option value="cgpa_4">CGPA out of 4</option>
+                    <option value="other">Other numeric score</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Score">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={educationForm.score_value}
+                    onChange={(event) =>
+                      setEducationForm((current) => ({
+                        ...current,
+                        score_value: event.target.value,
+                      }))
+                    }
+                    placeholder="90.4 or 8.2"
+                    className={inputClassName}
+                  />
+                </FormField>
+
+                <div className="sm:col-span-2">
+                  <label className="flex w-fit cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={educationForm.is_current}
+                      onChange={(event) =>
+                        setEducationForm((current) => ({
+                          ...current,
+                          is_current: event.target.checked,
+                          end_year: event.target.checked
+                            ? ""
+                            : current.end_year,
+                        }))
+                      }
+                      className="h-4 w-4"
+                    />
+                    I am currently studying here
+                  </label>
+                </div>
+              </div>
+
+              {educationMessage && (
+                <p
+                  className={`mt-4 text-sm font-medium ${
+                    educationMessage.includes("successfully")
+                      ? "text-green-700"
+                      : "text-red-700"
+                  }`}
+                >
+                  {educationMessage}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={saveEducation}
+                disabled={educationSaving}
+                className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {educationSaving
+                  ? "Saving..."
+                  : educationEditingId
+                  ? "Update Education"
+                  : "Save Education"}
+              </button>
+            </div>
+          )}
+
+          {education.length === 0 ? (
+            <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+              <p className="font-medium text-slate-900">
+                No education details added yet
+              </p>
+
+              <p className="mt-2 text-sm text-slate-500">
+                Add your college plus Class XII and Class X details to give
+                recruiters a complete academic profile.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {education.map((item) => {
+                const score = scoreLabel(item);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-5"
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-lg font-bold text-slate-950">
+                            {item.degree_or_course ||
+                              educationLevelLabel(item.education_level)}
+                          </h3>
+
+                          <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                            {educationLevelLabel(item.education_level)}
+                          </span>
+
+                          {item.is_current && (
+                            <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                              Current
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 font-semibold text-slate-700">
+                          {item.institution_name}
+                        </p>
+
+                        {item.board_or_university && (
+                          <p className="mt-1 text-sm text-slate-500">
+                            {item.board_or_university}
+                          </p>
+                        )}
+
+                        <p className="mt-2 text-sm text-slate-500">
+                          {item.start_year ? `${item.start_year} — ` : ""}
+                          {item.is_current
+                            ? "Present"
+                            : item.end_year || ""}
+                          {item.location ? ` • ${item.location}` : ""}
+                          {score ? ` • ${score}` : ""}
+                        </p>
+
+                        {item.specialization && (
+                          <p className="mt-2 text-xs font-medium text-slate-600">
+                            Specialization: {item.specialization}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditEducationForm(item)}
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteEducation(item.id)}
+                          className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section
           id="resume"
@@ -712,7 +2224,9 @@ export default function Dashboard() {
               </h2>
 
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                Upload your latest resume so eligible hiring companies can review it alongside your skills, assessments and work samples.
+                Upload your latest resume so hiring companies can review it
+                alongside your education, experience, skills, assessments and
+                work samples.
               </p>
 
               <p className="mt-1 text-xs text-slate-400">
@@ -747,7 +2261,7 @@ export default function Dashboard() {
                   <p className="mt-1 text-xs leading-5 text-slate-500">
                     {profile?.resume_url
                       ? "You can replace it anytime with a newer version."
-                      : "Your resume remains private and is shared only when recruiter access is allowed."}
+                      : "Upload your latest resume so company accounts can review it."}
                   </p>
                 </div>
               </div>
@@ -861,6 +2375,7 @@ export default function Dashboard() {
                       <h3 className="font-semibold text-slate-900">
                         {assessment.skill_name}
                       </h3>
+
                       <p className="mt-1 text-xs text-slate-500">
                         Best recorded result
                       </p>
@@ -1021,7 +2536,8 @@ export default function Dashboard() {
               </h2>
 
               <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                FresherHire compares your preferred role, skills, assessments and profile evidence against entry-level opportunities.
+                FresherHire compares your preferred role, skills, assessments
+                and profile evidence against entry-level opportunities.
               </p>
             </div>
 
@@ -1067,6 +2583,9 @@ export default function Dashboard() {
   );
 }
 
+const inputClassName =
+  "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
+
 function Info({
   label,
   value,
@@ -1083,6 +2602,23 @@ function Info({
       <p className="mt-1 text-sm font-medium text-slate-800">
         {value || "Not provided"}
       </p>
+    </div>
+  );
+}
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      {children}
     </div>
   );
 }
