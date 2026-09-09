@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import RecruiterJoiningBanner from "./components/RecruiterJoiningBanner";
 
 const features = [
   {
@@ -102,6 +103,8 @@ export default function Home() {
           </Link>
         </div>
       </nav>
+
+      <RecruiterJoiningBanner />
 
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 md:py-28">
         <div className="absolute inset-0 -z-10">
@@ -432,9 +435,9 @@ export default function Home() {
 
               <div className="mt-8 space-y-6">
                 <Step number="01" text="Create your profile" />
-                <Step number="02" text="Prove your skills" />
-                <Step number="03" text="Get verified" />
-                <Step number="04" text="Apply to jobs" />
+                <Step number="02" text="Add education, experience & resume" />
+                <Step number="03" text="Prove your skills" />
+                <Step number="04" text="Get discovered & apply" />
               </div>
             </motion.div>
 
@@ -450,9 +453,9 @@ export default function Home() {
               </p>
 
               <div className="mt-8 space-y-6">
-                <Step number="01" text="Post a job" />
-                <Step number="02" text="Find verified talent" />
-                <Step number="03" text="Shortlist candidates" />
+                <Step number="01" text="Create a recruiter account" />
+                <Step number="02" text="Find verified fresher talent" />
+                <Step number="03" text="Review profiles & shortlist" />
                 <Step number="04" text="Hire" />
               </div>
             </motion.div>
@@ -578,8 +581,8 @@ export default function Home() {
             </h2>
 
             <p className="mx-auto mt-5 max-w-xl text-blue-100">
-              Whether you&apos;re looking for your first opportunity or your
-              next talented fresher, start here.
+              Create a complete profile now so companies joining FresherHire
+              can evaluate your skills, education, experience and work.
             </p>
 
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
