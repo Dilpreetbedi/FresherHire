@@ -825,10 +825,9 @@ export default function EditRecruiterJobPage() {
                   onChange={
                     (event) =>
                       updateField(
-                        "employmentType",
-                        event.target.value
-                        as EmploymentType
-                      )
+                       "employmentType",
+                       (event.target.value as EmploymentType)
+                    )
                   }
                   className={inputClass}
                 >
