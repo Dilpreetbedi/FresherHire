@@ -10,7 +10,7 @@ import {
 } from "next/navigation";
 
 
-export default function CandidateLoginPage() {
+export default function RecruiterLoginPage() {
   const router =
     useRouter();
 
@@ -55,7 +55,7 @@ export default function CandidateLoginPage() {
 
       const response =
         await fetch(
-          `${apiUrl}/api/candidate/login`,
+          `${apiUrl}/api/recruiter/login`,
           {
             method:
               "POST",
@@ -88,9 +88,18 @@ export default function CandidateLoginPage() {
         );
       }
 
-      router.push(
-        "/candidate/dashboard"
-      );
+      if (
+        data.must_change_password
+      ) {
+        router.push(
+          "/recruiter/change-password"
+        );
+
+      } else {
+        router.push(
+          "/recruiter/dashboard"
+        );
+      }
 
       router.refresh();
 
@@ -114,7 +123,7 @@ export default function CandidateLoginPage() {
 
         <Link
           href="/"
-          className="block text-center text-3xl font-bold text-slate-950"
+          className="block text-center text-3xl font-bold"
         >
           Fresher
           <span className="text-blue-600">
@@ -126,18 +135,18 @@ export default function CandidateLoginPage() {
         <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
 
           <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
-            Candidate Login
+            Recruiter Login
           </p>
 
 
           <h1 className="mt-3 text-3xl font-bold">
-            Welcome back
+            Hiring dashboard
           </h1>
 
 
           <p className="mt-2 text-sm text-slate-500">
-            Login to manage your profile
-            and applications.
+            Access your verified company
+            hiring workspace.
           </p>
 
 
@@ -158,7 +167,7 @@ export default function CandidateLoginPage() {
             <div>
 
               <label className="text-sm font-semibold text-slate-700">
-                Email
+                Work Email
               </label>
 
 
@@ -175,7 +184,6 @@ export default function CandidateLoginPage() {
                     )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                placeholder="you@example.com"
               />
 
             </div>
@@ -191,8 +199,8 @@ export default function CandidateLoginPage() {
 
 
                 <Link
-                  href="/forgot-password?type=candidate"
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                  href="/forgot-password?type=recruiter"
+                  className="text-xs font-semibold text-blue-600"
                 >
                   Forgot password?
                 </Link>
@@ -213,7 +221,6 @@ export default function CandidateLoginPage() {
                     )
                 }
                 className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                placeholder="Enter password"
               />
 
             </div>
@@ -224,7 +231,7 @@ export default function CandidateLoginPage() {
               disabled={
                 loading
               }
-              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
             >
               {loading
                 ? "Logging in..."
@@ -234,25 +241,13 @@ export default function CandidateLoginPage() {
           </form>
 
 
-          <p className="mt-6 text-center text-sm text-slate-500">
-            New to FresherHire?{" "}
-
-            <Link
-              href="/signup/fresher"
-              className="font-semibold text-blue-600"
-            >
-              Create account
-            </Link>
-          </p>
-
-
           <div className="mt-6 border-t border-slate-100 pt-6 text-center">
 
             <Link
-              href="/recruiter/login"
-              className="text-sm font-semibold text-slate-600 hover:text-blue-600"
+              href="/login"
+              className="text-sm font-semibold text-slate-600"
             >
-              Recruiter Login →
+              Candidate Login →
             </Link>
 
           </div>

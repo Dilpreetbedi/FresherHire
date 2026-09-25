@@ -1,171 +1,319 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { supabase } from "../lib/supabase";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
+
+type AccountType =
+  | "candidate"
+  | "recruiter";
+
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:8000";
 
-  async function handleReset(
-    event: FormEvent<HTMLFormElement>
+  const [
+    accountType,
+    setAccountType,
+  ] =
+    useState<AccountType>(
+      "candidate"
+    );
+
+  const [
+    email,
+    setEmail,
+  ] =
+    useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState("");
+
+  const [
+    devResetUrl,
+    setDevResetUrl,
+  ] =
+    useState("");
+
+
+  useEffect(() => {
+    const search =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      search.get("type")
+      === "recruiter"
+    ) {
+      setAccountType(
+        "recruiter"
+      );
+    }
+  }, []);
+
+
+  async function handleSubmit(
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (loading) {
-      return;
-    }
+    try {
+      setLoading(true);
+      setError("");
+      setMessage("");
+      setDevResetUrl("");
 
-    setError("");
-    setMessage("");
+      const response =
+        await fetch(
+          `${apiUrl}/api/auth/forgot-password`,
+          {
+            method:
+              "POST",
 
-    const cleanEmail = email.trim();
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-    if (!cleanEmail) {
-      setError("Please enter your email address.");
-      return;
-    }
+            body:
+              JSON.stringify({
+                email:
+                  email.trim(),
 
-    setLoading(true);
+                account_type:
+                  accountType,
+              }),
+          }
+        );
 
-    const redirectTo =
-      `${window.location.origin}/reset-password`;
+      const data =
+        await response.json();
 
-    const {
-      error: resetError,
-    } = await supabase.auth.resetPasswordForEmail(
-      cleanEmail,
-      {
-        redirectTo,
+      if (!response.ok) {
+        throw new Error(
+          data.detail ||
+            "Unable to process request."
+        );
       }
-    );
 
-    if (resetError) {
-      console.error(
-        "Password reset error:",
-        resetError
+      setMessage(
+        data.message
       );
 
+      if (
+        data.dev_reset_url
+      ) {
+        setDevResetUrl(
+          data.dev_reset_url
+        );
+      }
+
+    } catch (err) {
       setError(
-        resetError.message
+        err instanceof Error
+          ? err.message
+          : "Unable to process request."
       );
 
+    } finally {
       setLoading(false);
-
-      return;
     }
-
-    setMessage(
-      "Password reset link sent. Please check your email."
-    );
-
-    setLoading(false);
   }
 
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 text-slate-900 sm:px-6">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
 
       <div className="w-full max-w-md">
 
-        <div className="text-center">
+        <Link
+          href="/"
+          className="block text-center text-3xl font-bold"
+        >
+          Fresher
+          <span className="text-blue-600">
+            Hire
+          </span>
+        </Link>
 
-          <Link
-            href="/"
-            className="text-3xl font-bold tracking-tight text-slate-950"
-          >
-            Fresher
-            <span className="text-blue-600">
-              Hire
-            </span>
-          </Link>
 
-          <p className="mt-3 text-sm text-slate-500">
-            Reset your account password.
+        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+
+          <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
+            Password Recovery
           </p>
 
-        </div>
 
-        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+          <h1 className="mt-3 text-3xl font-bold">
+            Forgot password?
+          </h1>
 
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-xl text-blue-600">
-            ✉
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            Enter your registered email
+            and we&apos;ll create a secure
+            password reset link.
+          </p>
+
+
+          <div className="mt-6 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
+
+            <button
+              type="button"
+              onClick={() =>
+                setAccountType(
+                  "candidate"
+                )
+              }
+              className={`rounded-lg px-3 py-2.5 text-sm font-semibold ${
+                accountType ===
+                "candidate"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              Candidate
+            </button>
+
+
+            <button
+              type="button"
+              onClick={() =>
+                setAccountType(
+                  "recruiter"
+                )
+              }
+              className={`rounded-lg px-3 py-2.5 text-sm font-semibold ${
+                accountType ===
+                "recruiter"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              Recruiter
+            </button>
+
           </div>
 
-          <div className="mt-5 text-center">
 
-            <h1 className="text-2xl font-bold text-slate-950">
-              Forgot your password?
-            </h1>
+          {error && (
+            <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Enter the email associated with your account. We&apos;ll send you a secure password reset link.
-            </p>
 
-          </div>
+          {message && (
+            <div className="mt-5 rounded-xl bg-green-50 p-4 text-sm leading-6 text-green-700">
+              ✓ {message}
+            </div>
+          )}
 
-          <form
-            onSubmit={handleReset}
-            className="mt-7 space-y-5"
-          >
 
-            <div>
+          {devResetUrl && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
 
-              <label
-                htmlFor="email"
-                className="text-sm font-semibold text-slate-700"
-              >
-                Email
-              </label>
+              <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+                Local Development
+              </p>
 
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) =>
-                  setEmail(
-                    e.target.value
-                  )
+
+              <p className="mt-2 text-sm text-slate-600">
+                Email is not configured,
+                so use this local reset link.
+              </p>
+
+
+              <a
+                href={
+                  devResetUrl
                 }
-                placeholder="you@example.com"
-                autoComplete="email"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-              />
+                className="mt-3 inline-flex text-sm font-semibold text-blue-600"
+              >
+                Reset Password →
+              </a>
 
             </div>
+          )}
 
-            {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {error}
-              </div>
-            )}
 
-            {message && (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-6 text-green-700">
-                {message}
-              </div>
-            )}
+          <form
+            onSubmit={
+              handleSubmit
+            }
+            className="mt-6"
+          >
+
+            <label className="text-sm font-semibold text-slate-700">
+              Email Address
+            </label>
+
+
+            <input
+              type="email"
+              required
+              value={
+                email
+              }
+              onChange={
+                (event) =>
+                  setEmail(
+                    event.target.value
+                  )
+              }
+              placeholder="you@example.com"
+              className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+            />
+
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={
+                loading
+              }
+              className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
             >
               {loading
                 ? "Sending..."
-                : "Send Reset Link →"}
+                : "Send Reset Link"}
             </button>
 
           </form>
 
-          <div className="mt-7 border-t border-slate-200 pt-6 text-center">
+
+          <div className="mt-6 text-center">
 
             <Link
-              href="/login"
-              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+              href={
+                accountType ===
+                "candidate"
+                  ? "/login"
+                  : "/recruiter/login"
+              }
+              className="text-sm font-semibold text-slate-600"
             >
               ← Back to Login
             </Link>
@@ -173,10 +321,6 @@ export default function ForgotPasswordPage() {
           </div>
 
         </div>
-
-        <p className="mt-5 text-center text-xs leading-5 text-slate-400">
-          The reset link will only work for the account associated with the email you enter.
-        </p>
 
       </div>
 

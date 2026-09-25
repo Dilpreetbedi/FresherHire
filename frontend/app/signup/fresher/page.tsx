@@ -1,40 +1,71 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useState,
+} from "react";
+
 import Link from "next/link";
-import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
+
 
 export default function FresherSignup() {
   const router = useRouter();
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    password: "",
-    graduationYear: "",
-    degree: "",
-    location: "",
-    role: "",
-  });
+  const [formData, setFormData] =
+    useState({
+      fullName: "",
+      email: "",
+      password: "",
+      graduationYear: "",
+      degree: "",
+      location: "",
+      role: "",
+    });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
+    useState("");
+
+
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:8000";
+
+
+  // =========================================================
+  // INPUT CHANGE
+  // =========================================================
 
   function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement |
+      HTMLSelectElement
+    >
   ) {
-    const { name, value } = e.target;
+    const {
+      name,
+      value,
+    } = e.target;
 
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
+    setFormData(
+      (previous) => ({
+        ...previous,
+        [name]: value,
+      })
+    );
 
     if (error) {
       setError("");
     }
   }
+
+
+  // =========================================================
+  // SIGNUP
+  // =========================================================
 
   async function handleSubmit(
     e: FormEvent<HTMLFormElement>
@@ -50,7 +81,9 @@ export default function FresherSignup() {
 
     try {
       const cleanEmail =
-        formData.email.trim().toLowerCase();
+        formData.email
+          .trim()
+          .toLowerCase();
 
       const cleanName =
         formData.fullName.trim();
@@ -63,6 +96,11 @@ export default function FresherSignup() {
 
       const cleanRole =
         formData.role.trim();
+
+
+      // -----------------------------------------------------
+      // VALIDATION
+      // -----------------------------------------------------
 
       if (!cleanName) {
         throw new Error(
@@ -105,65 +143,85 @@ export default function FresherSignup() {
         );
       }
 
+      if (!cleanLocation) {
+        throw new Error(
+          "Please enter your location."
+        );
+      }
+
       if (!cleanRole) {
         throw new Error(
           "Please enter your preferred role."
         );
       }
 
-      const {
-        data: authData,
-        error: authError,
-      } =
-        await supabase.auth.signUp({
-          email: cleanEmail,
-          password: formData.password,
-          options: {
-            data: {
-              user_type: "fresher",
-              full_name: cleanName,
-              graduation_year: graduationYear,
-              degree: cleanDegree,
-              location: cleanLocation || null,
-              preferred_role: cleanRole,
+
+      // -----------------------------------------------------
+      // FASTAPI SIGNUP
+      // -----------------------------------------------------
+
+      const response =
+        await fetch(
+          `${apiUrl}/api/candidate/signup`,
+          {
+            method: "POST",
+
+            credentials:
+              "include",
+
+            headers: {
+              "Content-Type":
+                "application/json",
             },
-          },
-        });
 
-      if (authError) {
-        const message =
-          authError.message.toLowerCase();
+            body: JSON.stringify({
+              full_name:
+                cleanName,
 
-        if (
-          message.includes("already registered") ||
-          message.includes("already exists")
-        ) {
-          throw new Error(
-            "An account with this email already exists. Please sign in instead."
-          );
-        }
+              email:
+                cleanEmail,
 
-        throw authError;
-      }
+              password:
+                formData.password,
 
-      if (!authData.user) {
+              graduation_year:
+                graduationYear,
+
+              degree:
+                cleanDegree,
+
+              location:
+                cleanLocation,
+
+              preferred_role:
+                cleanRole,
+            }),
+          }
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
         throw new Error(
+          data.detail ||
           "Account could not be created."
         );
       }
 
-      if (!authData.session) {
-        router.replace(
-          "/login"
-        );
-        return;
-      }
+
+      // -----------------------------------------------------
+      // SUCCESS
+      // -----------------------------------------------------
 
       router.replace(
-        "/dashboard"
+        "/candidate/dashboard"
       );
 
       router.refresh();
+
     } catch (err) {
       console.error(err);
 
@@ -172,29 +230,38 @@ export default function FresherSignup() {
           ? err.message
           : "Something went wrong. Please try again."
       );
+
     } finally {
       setLoading(false);
     }
   }
 
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-slate-50 px-4 py-10 text-slate-900 sm:px-6 sm:py-12">
 
+      {/* BACKGROUND */}
+
       <div className="absolute inset-0 -z-10">
         <div className="absolute left-1/4 top-0 h-72 w-72 rounded-full bg-blue-100 blur-3xl" />
+
         <div className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-cyan-100 blur-3xl" />
       </div>
 
+
       <div className="mx-auto max-w-3xl">
+
+        {/* HEADER */}
 
         <div className="mb-8">
 
           <Link
-            href="/signup"
+            href="/"
             className="text-sm font-medium text-slate-500 transition hover:text-slate-900"
           >
             ← Back
           </Link>
+
 
           <div className="mt-7">
 
@@ -203,26 +270,35 @@ export default function FresherSignup() {
               className="text-2xl font-bold tracking-tight text-slate-950"
             >
               Fresher
+
               <span className="text-blue-600">
                 Hire
               </span>
             </Link>
 
+
             <p className="mt-8 text-sm font-semibold uppercase tracking-widest text-blue-600">
               Candidate Signup
             </p>
+
 
             <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">
               Create your Fresher Profile
             </h1>
 
+
             <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Tell us a little about yourself so companies can discover you based on skills, projects and verified evidence.
+              Tell us a little about yourself
+              so companies can discover you
+              based on skills, projects and
+              verified evidence.
             </p>
 
           </div>
-
         </div>
+
+
+        {/* ERROR */}
 
         {error && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-700">
@@ -230,12 +306,17 @@ export default function FresherSignup() {
           </div>
         )}
 
+
+        {/* FORM */}
+
         <form
           onSubmit={handleSubmit}
           className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8 md:p-10"
         >
 
           <div className="grid gap-6 md:grid-cols-2">
+
+            {/* FULL NAME */}
 
             <div className="md:col-span-2">
 
@@ -250,8 +331,12 @@ export default function FresherSignup() {
                 id="fullName"
                 type="text"
                 name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
+                value={
+                  formData.fullName
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Enter your full name"
                 required
                 autoComplete="name"
@@ -259,6 +344,9 @@ export default function FresherSignup() {
               />
 
             </div>
+
+
+            {/* EMAIL */}
 
             <div className="md:col-span-2">
 
@@ -273,8 +361,12 @@ export default function FresherSignup() {
                 id="email"
                 type="email"
                 name="email"
-                value={formData.email}
-                onChange={handleChange}
+                value={
+                  formData.email
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="you@example.com"
                 required
                 autoComplete="email"
@@ -282,6 +374,9 @@ export default function FresherSignup() {
               />
 
             </div>
+
+
+            {/* PASSWORD */}
 
             <div className="md:col-span-2">
 
@@ -296,8 +391,12 @@ export default function FresherSignup() {
                 id="password"
                 type="password"
                 name="password"
-                value={formData.password}
-                onChange={handleChange}
+                value={
+                  formData.password
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Create a password"
                 minLength={8}
                 required
@@ -311,6 +410,9 @@ export default function FresherSignup() {
 
             </div>
 
+
+            {/* GRADUATION YEAR */}
+
             <div>
 
               <label
@@ -323,8 +425,13 @@ export default function FresherSignup() {
               <select
                 id="graduationYear"
                 name="graduationYear"
-                value={formData.graduationYear}
-                onChange={handleChange}
+                value={
+                  formData
+                    .graduationYear
+                }
+                onChange={
+                  handleChange
+                }
                 required
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               >
@@ -332,16 +439,40 @@ export default function FresherSignup() {
                   Select graduation year
                 </option>
 
-                <option value="2024">2024</option>
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-                <option value="2029">2029</option>
+                <option value="2024">
+                  2024
+                </option>
+
+                <option value="2025">
+                  2025
+                </option>
+
+                <option value="2026">
+                  2026
+                </option>
+
+                <option value="2027">
+                  2027
+                </option>
+
+                <option value="2028">
+                  2028
+                </option>
+
+                <option value="2029">
+                  2029
+                </option>
+
+                <option value="2030">
+                  2030
+                </option>
 
               </select>
 
             </div>
+
+
+            {/* DEGREE */}
 
             <div>
 
@@ -356,18 +487,26 @@ export default function FresherSignup() {
                 id="degree"
                 type="text"
                 name="degree"
-                value={formData.degree}
-                onChange={handleChange}
+                value={
+                  formData.degree
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. B.Tech, B.Com, BA, MBA, Diploma"
                 required
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
 
               <p className="mt-2 text-xs text-slate-500">
-                Any technical or non-technical qualification.
+                Any technical or
+                non-technical qualification.
               </p>
 
             </div>
+
+
+            {/* LOCATION */}
 
             <div>
 
@@ -382,8 +521,12 @@ export default function FresherSignup() {
                 id="location"
                 type="text"
                 name="location"
-                value={formData.location}
-                onChange={handleChange}
+                value={
+                  formData.location
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. Bangalore, Delhi, Mumbai"
                 required
                 autoComplete="address-level2"
@@ -391,6 +534,9 @@ export default function FresherSignup() {
               />
 
             </div>
+
+
+            {/* PREFERRED ROLE */}
 
             <div>
 
@@ -405,20 +551,29 @@ export default function FresherSignup() {
                 id="role"
                 type="text"
                 name="role"
-                value={formData.role}
-                onChange={handleChange}
+                value={
+                  formData.role
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="e.g. HR, Sales, Marketing, Finance, Developer"
                 required
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
               />
 
               <p className="mt-2 text-xs text-slate-500">
-                Enter any technical or non-technical role you are interested in.
+                Enter any technical or
+                non-technical role you are
+                interested in.
               </p>
 
             </div>
 
           </div>
+
+
+          {/* SUBMIT */}
 
           <button
             type="submit"
@@ -430,14 +585,20 @@ export default function FresherSignup() {
               : "Create Fresher Profile →"}
           </button>
 
+
           <p className="mt-5 text-center text-xs leading-5 text-slate-500">
-            By creating an account, you agree to FresherHire&apos;s Terms of Service and Privacy Policy.
+            By creating an account,
+            you agree to FresherHire&apos;s
+            Terms of Service and Privacy
+            Policy.
           </p>
 
         </form>
 
+
         <p className="mt-6 text-center text-sm text-slate-500">
           Already registered?{" "}
+
           <Link
             href="/login"
             className="font-semibold text-blue-600 hover:text-blue-700"

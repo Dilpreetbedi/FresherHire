@@ -1,93 +1,120 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabase";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
+
+type AccountType =
+  | "candidate"
+  | "recruiter";
+
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:8000";
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] =
+  const [
+    token,
+    setToken,
+  ] =
     useState("");
 
-  const [sessionReady, setSessionReady] =
+  const [
+    accountType,
+    setAccountType,
+  ] =
+    useState<AccountType | null>(
+      null
+    );
+
+  const [
+    password,
+    setPassword,
+  ] =
+    useState("");
+
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] =
+    useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(false);
 
-  const [loading, setLoading] =
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
+
+  const [
+    success,
+    setSuccess,
+  ] =
     useState(false);
 
-  const [error, setError] =
-    useState("");
-
-  const [message, setMessage] =
-    useState("");
 
   useEffect(() => {
-    let mounted = true;
-
-    async function checkSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (
-        session &&
-        mounted
-      ) {
-        setSessionReady(true);
-      }
-    }
-
-    checkSession();
-
-    const {
-      data: {
-        subscription,
-      },
-    } =
-      supabase.auth.onAuthStateChange(
-        (event, session) => {
-          if (
-            !mounted
-          ) {
-            return;
-          }
-
-          if (
-            event ===
-              "PASSWORD_RECOVERY" ||
-            session
-          ) {
-            setSessionReady(true);
-          }
-        }
+    const search =
+      new URLSearchParams(
+        window.location.search
       );
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    const tokenValue =
+      search.get("token") || "";
+
+    const typeValue =
+      search.get("type");
+
+    setToken(
+      tokenValue
+    );
+
+    if (
+      typeValue ===
+      "candidate"
+      ||
+      typeValue ===
+      "recruiter"
+    ) {
+      setAccountType(
+        typeValue
+      );
+    }
   }, []);
 
-  async function updatePassword(
-    event: FormEvent<HTMLFormElement>
+
+  async function handleSubmit(
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    if (loading) {
+    if (
+      !token
+      || !accountType
+    ) {
+      setError(
+        "Invalid password reset link."
+      );
+
       return;
     }
-
-    setError("");
-    setMessage("");
 
     if (
       password.length < 8
     ) {
       setError(
-        "Password must be at least 8 characters."
+        "Password must contain at least 8 characters."
       );
 
       return;
@@ -104,206 +131,238 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    setLoading(true);
+    try {
+      setLoading(true);
+      setError("");
 
-    const {
-      error: updateError,
-    } =
-      await supabase.auth.updateUser({
-        password,
-      });
+      const response =
+        await fetch(
+          `${apiUrl}/api/auth/reset-password`,
+          {
+            method:
+              "POST",
 
-    if (updateError) {
-      console.error(
-        "Password update error:",
-        updateError
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                token,
+
+                account_type:
+                  accountType,
+
+                new_password:
+                  password,
+              }),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.detail ||
+            "Unable to reset password."
+        );
+      }
+
+      setSuccess(
+        true
       );
 
+      setPassword("");
+      setConfirmPassword("");
+
+    } catch (err) {
       setError(
-        updateError.message
+        err instanceof Error
+          ? err.message
+          : "Unable to reset password."
       );
 
+    } finally {
       setLoading(false);
-
-      return;
     }
-
-    setMessage(
-      "Password updated successfully."
-    );
-
-    setLoading(false);
-
-    window.setTimeout(() => {
-      router.replace("/login");
-    }, 1500);
   }
 
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 text-slate-900 sm:px-6">
 
-      <div className="w-full max-w-md">
+  const loginUrl =
+    accountType ===
+    "recruiter"
+      ? "/recruiter/login"
+      : "/login";
 
-        <div className="text-center">
+
+  if (success) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-2xl">
+            ✓
+          </div>
+
+
+          <h1 className="mt-5 text-3xl font-bold">
+            Password updated
+          </h1>
+
+
+          <p className="mt-3 text-sm leading-6 text-slate-500">
+            Your FresherHire password
+            has been reset successfully.
+          </p>
+
 
           <Link
-            href="/"
-            className="text-3xl font-bold tracking-tight text-slate-950"
+            href={
+              loginUrl
+            }
+            className="mt-7 inline-flex rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white"
           >
-            Fresher
-            <span className="text-blue-600">
-              Hire
-            </span>
+            Login with New Password
           </Link>
-
-          <p className="mt-3 text-sm text-slate-500">
-            Choose a new password.
-          </p>
 
         </div>
 
-        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+      </main>
+    );
+  }
 
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-xl text-blue-600">
-            🔐
-          </div>
 
-          <div className="mt-5 text-center">
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
 
-            <h1 className="text-2xl font-bold text-slate-950">
-              Reset Password
-            </h1>
+      <div className="w-full max-w-md">
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Create a new password for your FresherHire account.
-            </p>
+        <Link
+          href="/"
+          className="block text-center text-3xl font-bold"
+        >
+          Fresher
+          <span className="text-blue-600">
+            Hire
+          </span>
+        </Link>
 
-          </div>
 
-          {!sessionReady ? (
+        <div className="mt-8 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
 
-            <div className="mt-7 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold uppercase tracking-widest text-blue-600">
+            Password Reset
+          </p>
 
-              <p className="text-sm font-semibold text-amber-800">
-                Waiting for reset session...
-              </p>
 
-              <p className="mt-2 text-xs leading-5 text-slate-600">
-                Open this page using the password reset link sent to your email.
-              </p>
+          <h1 className="mt-3 text-3xl font-bold">
+            Create new password
+          </h1>
 
-              <Link
-                href="/forgot-password"
-                className="mt-3 inline-block text-xs font-semibold text-blue-600 hover:text-blue-700"
-              >
-                Request a new reset link
-              </Link>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Choose a new password
+            for your FresherHire account.
+          </p>
+
+
+          {error && (
+            <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+
+          {(
+            !token
+            || !accountType
+          ) && (
+            <div className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
+              This password reset link
+              appears to be invalid.
+            </div>
+          )}
+
+
+          <form
+            onSubmit={
+              handleSubmit
+            }
+            className="mt-6 space-y-5"
+          >
+
+            <div>
+
+              <label className="text-sm font-semibold text-slate-700">
+                New Password
+              </label>
+
+
+              <input
+                type="password"
+                minLength={8}
+                required
+                value={
+                  password
+                }
+                onChange={
+                  (event) =>
+                    setPassword(
+                      event.target.value
+                    )
+                }
+                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                placeholder="Minimum 8 characters"
+              />
 
             </div>
 
-          ) : (
 
-            <form
-              onSubmit={updatePassword}
-              className="mt-7 space-y-5"
-            >
+            <div>
 
-              <div>
+              <label className="text-sm font-semibold text-slate-700">
+                Confirm Password
+              </label>
 
-                <label
-                  htmlFor="password"
-                  className="text-sm font-semibold text-slate-700"
-                >
-                  New Password
-                </label>
 
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Minimum 8 characters"
-                  autoComplete="new-password"
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                />
-
-                <p className="mt-2 text-xs text-slate-500">
-                  Use at least 8 characters.
-                </p>
-
-              </div>
-
-              <div>
-
-                <label
-                  htmlFor="confirm-password"
-                  className="text-sm font-semibold text-slate-700"
-                >
-                  Confirm Password
-                </label>
-
-                <input
-                  id="confirm-password"
-                  type="password"
-                  required
-                  minLength={8}
-                  value={
-                    confirmPassword
-                  }
-                  onChange={(e) =>
+              <input
+                type="password"
+                minLength={8}
+                required
+                value={
+                  confirmPassword
+                }
+                onChange={
+                  (event) =>
                     setConfirmPassword(
-                      e.target.value
+                      event.target.value
                     )
-                  }
-                  placeholder="Enter password again"
-                  autoComplete="new-password"
-                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                />
+                }
+                className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                placeholder="Enter password again"
+              />
 
-              </div>
+            </div>
 
-              {error && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  {error}
-                </div>
-              )}
 
-              {message && (
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700">
-                  {message}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading
-                  ? "Updating..."
-                  : "Update Password →"}
-              </button>
-
-            </form>
-
-          )}
-
-          <div className="mt-7 border-t border-slate-200 pt-6 text-center">
-
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+            <button
+              type="submit"
+              disabled={
+                loading
+                || !token
+                || !accountType
+              }
+              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
             >
-              ← Back to Login
-            </Link>
+              {loading
+                ? "Resetting..."
+                : "Reset Password"}
+            </button>
 
-          </div>
+          </form>
 
         </div>
 
