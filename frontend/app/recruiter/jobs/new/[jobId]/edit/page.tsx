@@ -825,9 +825,9 @@ export default function EditRecruiterJobPage() {
                   onChange={
                     (event) =>
                       updateField(
-                       "employmentType",
-                       (event.target.value as EmploymentType)
-                    )
+                        "employmentType",
+                        event.target.value as EmploymentType
+                      )
                   }
                   className={inputClass}
                 >
@@ -860,8 +860,7 @@ export default function EditRecruiterJobPage() {
                     (event) =>
                       updateField(
                         "workplaceType",
-                        event.target.value
-                        as WorkplaceType
+                        event.target.value as WorkplaceType
                       )
                   }
                   className={inputClass}
@@ -895,8 +894,7 @@ export default function EditRecruiterJobPage() {
                     (event) =>
                       updateField(
                         "experience",
-                        event.target.value
-                        as Experience
+                        event.target.value as Experience
                       )
                   }
                   className={inputClass}
