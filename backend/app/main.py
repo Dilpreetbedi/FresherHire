@@ -80,9 +80,11 @@ RECRUITER_PAYMENT_PLANS = {
     },
 }
 
-allowed_origins = [FRONTEND_URL]
-if APP_ENV != "production" and "http://localhost:3000" not in allowed_origins:
-    allowed_origins.append("http://localhost:3000")
+allowed_origins = [
+    "https://fresherrhiree.vercel.app",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 app.add_middleware(
     CORSMiddleware,
