@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 const BACKEND = "https://fresherhire.onrender.com";
 
 async function proxy(
@@ -7,14 +10,14 @@ async function proxy(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await params;
-  const url = new URL(req.url);
+  const incoming = new URL(req.url);
 
   const upstream = await fetch(
-    `${BACKEND}/${path.join("/")}${url.search}`,
+    `${BACKEND}/${path.join("/")}${incoming.search}`,
     {
       method: req.method,
       headers: {
-        "content-type": req.headers.get("content-type") || "",
+        "content-type": req.headers.get("content-type") || "application/json",
         cookie: req.headers.get("cookie") || "",
       },
       body:
@@ -26,15 +29,17 @@ async function proxy(
   );
 
   const headers = new Headers();
-  headers.set(
-    "content-type",
-    upstream.headers.get("content-type") || "application/json"
-  );
 
-  const cookies = upstream.headers.getSetCookie?.() || [];
-  cookies.forEach((cookie) =>
-    headers.append("set-cookie", cookie)
-  );
+  const contentType = upstream.headers.get("content-type");
+  if (contentType) {
+    headers.set("content-type", contentType);
+  }
+
+  const setCookies = upstream.headers.getSetCookie();
+
+  for (const cookie of setCookies) {
+    headers.append("set-cookie", cookie);
+  }
 
   return new NextResponse(await upstream.arrayBuffer(), {
     status: upstream.status,
@@ -47,3 +52,4 @@ export const POST = proxy;
 export const PUT = proxy;
 export const PATCH = proxy;
 export const DELETE = proxy;
+export const OPTIONS = proxy;
